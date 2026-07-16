@@ -242,9 +242,12 @@ function renderHome() {
     </section>
 
     <div class="wrap">
-      <div class="section-head">
-        <h2>相簿</h2>
-        <p>依時間排序，最新的在前面</p>
+      <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; flex-wrap:wrap">
+        <div>
+          <h2>相簿</h2>
+          <p>依時間排序，最新的在前面</p>
+        </div>
+        <a class="btn btn-ghost btn-sm" href="#/upload">＋ 上傳照片</a>
       </div>
       <div class="albums">
         ${albums.map((a) => `
@@ -590,6 +593,157 @@ function renderPerson(name) {
   });
 }
 
+/* ============ 畫面：上傳照片 ============ */
+
+function renderUpload() {
+  const albums = S.albums.albums;
+  const savedPw = localStorage.getItem('chou-pw') || '';
+  const savedName = localStorage.getItem('chou-name') || '';
+
+  view().innerHTML = `
+    <div class="wrap">
+      <div class="finder">
+        <div class="section-head">
+          <h2>上傳照片</h2>
+          <p>把你手上的家族照片加進來。上傳後會自動跑人臉辨識，<b>幾分鐘後就會出現在相簿裡</b>，
+             家人也就能從那些照片裡找到自己。</p>
+        </div>
+
+        <div class="panel">
+          <h3>你是誰</h3>
+          <p class="hint">會記在上傳紀錄裡，讓大家知道這些照片是誰提供的。</p>
+          <div class="field">
+            <input class="input" id="up-name" placeholder="你的名字" value="${esc(savedName)}" maxlength="20">
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>家族密碼</h3>
+          <p class="hint">跟 Jay 要。設密碼是因為網站是公開的，不擋的話陌生人也能往相簿丟東西。</p>
+          <div class="field">
+            <input class="input" id="up-pw" type="password" placeholder="家族密碼" value="${esc(savedPw)}">
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>要放進哪一本相簿？</h3>
+          <div class="field" style="margin-bottom:.75rem">
+            <select class="input" id="up-album">
+              <option value="__new__">＋ 建立新相簿</option>
+              ${albums.map((a) => `<option value="${esc(a.dir)}">${fmtDate(a.date)} ${esc(a.title)}</option>`).join('')}
+            </select>
+          </div>
+          <div id="up-new">
+            <p class="hint">新相簿要有日期和名稱，例如「2025-01-01」＋「新年聚餐」。</p>
+            <div class="field">
+              <input class="input" id="up-date" type="date" style="max-width:12rem">
+              <input class="input" id="up-title" placeholder="相簿名稱，例如 新年聚餐" maxlength="30">
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>選照片</h3>
+          <p class="hint">一次最多 40 張、單張 12MB 以內。<b>有原檔請直接傳原檔</b> —— 畫質越好，人臉認得越準。</p>
+          <div class="dropzone" id="up-dz" style="padding:2rem 1rem">
+            <div class="dz-icon">📤</div>
+            <h3 id="up-dz-label">點這裡選照片</h3>
+            <p>或把照片拖進來</p>
+            <input type="file" id="up-files" accept="image/*" multiple hidden>
+          </div>
+          <div id="up-preview" class="facepick" style="margin-top:1rem"></div>
+        </div>
+
+        <div class="panel">
+          <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center">
+            <button class="btn" id="up-go" disabled>開始上傳</button>
+            <span class="muted" id="up-status"></span>
+          </div>
+          <div class="progress" id="up-progress" hidden><i id="up-bar"></i></div>
+        </div>
+      </div>
+    </div>`;
+
+  const sel = $('#up-album');
+  const newBox = $('#up-new');
+  const fileInput = $('#up-files');
+  const dz = $('#up-dz');
+  let picked = [];
+
+  const syncNew = () => { newBox.style.display = sel.value === '__new__' ? '' : 'none'; };
+  sel.addEventListener('change', syncNew);
+  syncNew();
+
+  const setFiles = (list) => {
+    picked = [...list].filter((f) => f.type.startsWith('image/')).slice(0, 40);
+    $('#up-dz-label').textContent = picked.length ? `已選 ${picked.length} 張` : '點這裡選照片';
+    $('#up-go').disabled = !picked.length;
+    const box = $('#up-preview');
+    box.innerHTML = picked.slice(0, 12).map((f) => `<button type="button" disabled><img src="${URL.createObjectURL(f)}" alt=""></button>`).join('')
+      + (picked.length > 12 ? `<span class="muted" style="align-self:center">…還有 ${picked.length - 12} 張</span>` : '');
+  };
+
+  dz.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => setFiles(fileInput.files));
+  dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+  dz.addEventListener('drop', (e) => { e.preventDefault(); dz.classList.remove('over'); setFiles(e.dataTransfer.files); });
+
+  $('#up-go').addEventListener('click', async () => {
+    const name = $('#up-name').value.trim();
+    const pw = $('#up-pw').value;
+    if (!pw) return toast('請先輸入家族密碼');
+    if (!picked.length) return toast('還沒選照片');
+
+    let albumDir = sel.value;
+    if (albumDir === '__new__') {
+      const date = $('#up-date').value;      // YYYY-MM-DD
+      const title = $('#up-title').value.trim();
+      if (!date) return toast('請選新相簿的日期');
+      if (!title) return toast('請幫新相簿取個名字');
+      albumDir = date.replace(/-/g, '') + title;
+    }
+
+    localStorage.setItem('chou-pw', pw);
+    localStorage.setItem('chou-name', name);
+
+    const fd = new FormData();
+    fd.append('password', pw);
+    fd.append('album', albumDir);
+    fd.append('uploader', name || '家人');
+    for (const f of picked) fd.append('files', f, f.name);
+
+    $('#up-go').disabled = true;
+    $('#up-progress').hidden = false;
+    $('#up-bar').style.width = '30%';
+    $('#up-status').textContent = `上傳中… ${picked.length} 張`;
+
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const out = await res.json();
+      $('#up-bar').style.width = '100%';
+      if (!res.ok) throw new Error(out.error || '上傳失敗');
+
+      $('#steps') && ($('#steps').innerHTML = '');
+      view().querySelector('.finder').innerHTML = `
+        <div class="empty">
+          <h3>上傳成功 — ${out.count} 張</h3>
+          <p>照片已經收進「${esc(out.album)}」。<br>
+             系統正在跑人臉辨識，<b>大約 3~5 分鐘後</b>重新整理相簿就會看到。</p>
+          <p style="margin-top:1.5rem">
+            <a class="btn" href="#/upload" onclick="setTimeout(()=>location.reload(),50)">再傳一批</a>
+            <a class="btn btn-ghost" href="#/">回到相簿</a>
+          </p>
+        </div>`;
+    } catch (err) {
+      $('#up-progress').hidden = true;
+      $('#up-go').disabled = false;
+      $('#up-status').textContent = '';
+      toast(err.message, 5000);
+    }
+  });
+}
+
 function renderNotFound() {
   view().innerHTML = `<div class="wrap"><div class="empty"><h3>找不到這一頁</h3>
     <p><a href="#/">回首頁</a></p></div></div>`;
@@ -761,6 +915,7 @@ function route() {
   if (!page) return renderHome();
   if (page === 'album' && arg) return renderAlbum(arg);
   if (page === 'find') return renderFind();
+  if (page === 'upload') return renderUpload();
   if (page === 'people') return renderPeople();
   if (page === 'person' && arg) return renderPerson(decodeURIComponent(arg));
   renderNotFound();
