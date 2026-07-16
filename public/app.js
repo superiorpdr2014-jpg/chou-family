@@ -107,11 +107,15 @@ function saveDraft() {
 /* ============ 資料載入 ============ */
 
 async function loadData() {
+  // no-cache = 每次跟伺服器確認有沒有新版；沒變就回 304，不會真的重傳。
+  // 不這樣做的話，新增相簿或改了族譜，家人的瀏覽器會一直顯示舊的，
+  // 而且他們根本不知道要清快取。
+  const get = (url) => fetch(url, { cache: 'no-cache' });
   const [albums, faces, binBuf, people] = await Promise.all([
-    fetch('data/albums.json').then((r) => r.json()),
-    fetch('data/faces.json').then((r) => r.json()),
-    fetch('data/faces.bin').then((r) => r.arrayBuffer()),
-    fetch('data/people.json').then((r) => r.json()).catch(() => ({ people: [] })),
+    get('data/albums.json').then((r) => r.json()),
+    get('data/faces.json').then((r) => r.json()),
+    get('data/faces.bin').then((r) => r.arrayBuffer()),
+    get('data/people.json').then((r) => r.json()).catch(() => ({ people: [] })),
   ]);
   S.albums = albums;
   S.faces = faces;
@@ -511,62 +515,151 @@ function runFind() {
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-/* ============ 畫面：家人名冊 ============ */
+/* ============ 族譜 ============ */
 
-function renderPeople() {
+/** 把名冊整理成「誰是誰的小孩」的結構 */
+function buildFamily() {
+  const byId = new Map(S.people.map((p) => [p.id, p]));
+  const childrenOf = new Map(); // 「爸id+媽id」（排序過）→ [小孩]
+  for (const p of S.people) {
+    const par = (p.parents || []).filter((id) => byId.has(id));
+    if (!par.length) continue;
+    const key = [...par].sort().join('+');
+    if (!childrenOf.has(key)) childrenOf.set(key, []);
+    childrenOf.get(key).push(p);
+  }
+  return { byId, childrenOf };
+}
+
+/** 這個人有幾張照片（沒登記人臉就是 0） */
+function photoCount(person) {
+  if (!person.refs || !person.refs.length) return 0;
+  const refs = person.refs.map((r) => Float32Array.from(r.d));
+  return matchPhotos(refs, STRICTNESS.normal.value).length;
+}
+
+function personCardHtml(p) {
+  const n = photoCount(p);
+  const initial = (p.name || '?').trim().charAt(0);
+  const hasFace = p.refs && p.refs.length;
+  return `
+    <a class="tp ${p.gender === 'F' ? 'f' : p.gender === 'M' ? 'm' : ''}" href="#/person/${encodeURIComponent(p.id)}">
+      <span class="tp-av" ${hasFace ? `data-crop="${esc(JSON.stringify(p.refs[0]))}"` : ''}>${hasFace ? '' : esc(initial)}</span>
+      <span class="tp-name">${esc(p.name)}</span>
+      <span class="tp-sub">${n ? n + ' 張照片' : (p.note ? esc(p.note) : '還沒認照片')}</span>
+    </a>`;
+}
+
+/** 遞迴畫一個家庭：一對夫妻（或單身）＋他們的小孩 */
+function familyNodeHtml(person, ctx, seen) {
+  if (seen.has(person.id)) return '';
+  seen.add(person.id);
+
+  const spouses = (person.spouse || []).map((id) => ctx.byId.get(id)).filter((s) => s && !seen.has(s.id));
+  spouses.forEach((s) => seen.add(s.id));
+  const members = [person, ...spouses];
+
+  // 小孩：先找「這對夫妻」的，找不到再找只登記單親的
+  const coupleKey = members.map((m) => m.id).sort().join('+');
+  let kids = ctx.childrenOf.get(coupleKey) || [];
+  if (!kids.length) kids = ctx.childrenOf.get(person.id) || [];
+
+  const coupleHtml = members.map(personCardHtml).join('<span class="tp-eq"></span>');
+
+  const kidsHtml = kids.length ? `
+    <div class="branch">
+      ${kids.map((k) => `<div class="child">${familyNodeHtml(k, ctx, seen)}</div>`).join('')}
+    </div>` : '';
+
+  return `<div class="node"><div class="couple">${coupleHtml}</div>${kidsHtml}</div>`;
+}
+
+function renderTree() {
   if (!S.people.length) {
     view().innerHTML = `
       <div class="wrap"><div class="empty">
-        <h3>名冊還沒建立</h3>
-        <p>等家族裡的人臉都標上名字之後，這裡就能用名字直接找照片。<br>
-           現在可以先用「<a href="#/find">找出我的照片</a>」上傳照片來找。</p>
+        <h3>族譜還沒建立</h3>
+        <p>現在可以先用「<a href="#/find">找出我的照片</a>」上傳照片來找自己。</p>
       </div></div>`;
     return;
   }
 
-  const counts = S.people.map((p) => {
-    const refs = p.refs.map((r) => Float32Array.from(r.d));
-    return { p, n: matchPhotos(refs, STRICTNESS.normal.value).length, avatar: p.refs[0] };
-  });
+  const ctx = buildFamily();
+  // 樹根：沒有登記父母的人。但如果配偶那邊有父母，就讓他跟著配偶一起出現，不要自己當一棵樹
+  const roots = S.people.filter((p) =>
+    !(p.parents || []).filter((id) => ctx.byId.has(id)).length &&
+    !(p.spouse || []).some((sid) => ((ctx.byId.get(sid) || {}).parents || []).length)
+  );
+
+  const seen = new Set();
+  const trees = roots.map((r) => familyNodeHtml(r, ctx, seen)).filter(Boolean);
+
+  // 有登記名字但接不上樹的人（還沒填關係），另外列出來，不要讓他們消失
+  const orphans = S.people.filter((p) => !seen.has(p.id));
 
   view().innerHTML = `
     <div class="wrap">
       <div class="section-head">
-        <h2>家人</h2>
-        <p>點一個名字，看他在每個時期的照片</p>
+        <h2>族譜</h2>
+        <p>${S.people.length} 位家人 · 點任何一個人，看他的照片</p>
       </div>
-      <div class="people-grid">
-        ${counts.map((c) => `
-          <a class="person-card" href="#/person/${encodeURIComponent(c.p.name)}">
-            <img data-crop="${esc(JSON.stringify(c.avatar))}" alt="${esc(c.p.name)}">
-            <div class="pname">${esc(c.p.name)}</div>
-            <div class="pcount">${c.n} 張照片</div>
-          </a>`).join('')}
+      <div class="tree-scroll">
+        <div class="tree">${trees.join('')}</div>
       </div>
+      ${orphans.length ? `
+        <div class="section-head" style="margin-top:3rem">
+          <h2 style="font-size:1.1rem">還沒接上族譜</h2>
+          <p>這些家人還沒填上一代/下一代的關係</p>
+        </div>
+        <div class="tree"><div class="couple">${orphans.map(personCardHtml).join('')}</div></div>` : ''}
+      <p class="muted" style="margin-top:2.5rem; font-size:.85rem">
+        族譜還不完整？<a href="#/upload">上傳照片</a>時可以順便登記自己和家人的關係。
+      </p>
     </div>`;
 
-  // 頭像從原圖裁出來
+  hydrateAvatars();
+}
+
+/** 頭像是從照片裡把臉裁出來的，等畫面畫好再補上 */
+function hydrateAvatars() {
   for (const el of document.querySelectorAll('[data-crop]')) {
-    const ref = JSON.parse(el.dataset.crop);
-    loadImage(ref.p).then((img) => { el.src = cropFace(img, ref.b, 144); }).catch(() => {});
+    let ref;
+    try { ref = JSON.parse(el.dataset.crop); } catch { continue; }
+    if (!ref || !ref.p) continue;
+    loadImage(ref.p).then((img) => {
+      el.style.backgroundImage = `url(${cropFace(img, ref.b, 160)})`;
+      el.textContent = '';
+    }).catch(() => {});
   }
 }
 
-function renderPerson(name) {
-  const person = S.people.find((p) => p.name === name);
+function renderPerson(id) {
+  const person = S.people.find((p) => p.id === id) || S.people.find((p) => p.name === id);
   if (!person) return renderNotFound();
 
-  const refs = person.refs.map((r) => Float32Array.from(r.d));
-  const matches = matchPhotos(refs, STRICTNESS.normal.value);
+  const ctx = buildFamily();
+  const refs = (person.refs || []).map((r) => Float32Array.from(r.d));
+  const matches = refs.length ? matchPhotos(refs, STRICTNESS.normal.value) : [];
   const groups = groupByAlbum(matches);
+
+  const rel = [];
+  const parents = (person.parents || []).map((i) => ctx.byId.get(i)).filter(Boolean);
+  const spouses = (person.spouse || []).map((i) => ctx.byId.get(i)).filter(Boolean);
+  const kids = S.people.filter((p) => (p.parents || []).includes(person.id));
+  const link = (p) => `<a href="#/person/${encodeURIComponent(p.id)}">${esc(p.name)}</a>`;
+  if (parents.length) rel.push(`父母：${parents.map(link).join('、')}`);
+  if (spouses.length) rel.push(`配偶：${spouses.map(link).join('、')}`);
+  if (kids.length) rel.push(`子女：${kids.map(link).join('、')}`);
 
   view().innerHTML = `
     <div class="wrap">
-      <a class="back-link" href="#/people">← 回到家人</a>
+      <a class="back-link" href="#/people">← 回到族譜</a>
       <div class="section-head">
         <h2>${esc(person.name)}</h2>
-        <p>找到 ${matches.length} 張照片，橫跨 ${groups.length} 個相簿</p>
+        ${person.note ? `<p>${esc(person.note)}</p>` : ''}
+        ${rel.length ? `<p style="margin-top:.5rem">${rel.join(' ｜ ')}</p>` : ''}
       </div>
+      ${matches.length ? `<p class="muted" style="margin-bottom:1.5rem">找到 ${matches.length} 張照片，橫跨 ${groups.length} 個相簿</p>` : ''}
       <div id="pres">
         ${groups.map((g) => `
           <div class="result-group">
@@ -583,7 +676,11 @@ function renderPerson(name) {
             </div>
           </div>`).join('')}
       </div>
-      ${!matches.length ? '<div class="empty"><h3>還沒找到照片</h3></div>' : ''}
+      ${!matches.length ? `<div class="empty">
+        <h3>還沒認出他的照片</h3>
+        <p>${refs.length ? '相簿裡目前找不到他。' : '還沒登記他的臉，所以沒辦法從照片裡認出來。'}<br>
+           在照片上用管理模式點他的臉命名，或請他自己來「<a href="#/find">找出我的照片</a>」。</p>
+      </div>` : ''}
     </div>`;
 
   const order = matches.map((m) => m.pi);
@@ -916,7 +1013,7 @@ function route() {
   if (page === 'album' && arg) return renderAlbum(arg);
   if (page === 'find') return renderFind();
   if (page === 'upload') return renderUpload();
-  if (page === 'people') return renderPeople();
+  if (page === 'people' || page === 'tree') return renderTree();
   if (page === 'person' && arg) return renderPerson(decodeURIComponent(arg));
   renderNotFound();
 }

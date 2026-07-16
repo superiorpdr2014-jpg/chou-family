@@ -1,0 +1,23 @@
+# Cloudflare Pages 的快取設定
+
+# 資料檔會變（新增相簿、標名字、改族譜），每次都要跟伺服器確認一下有沒有新版。
+# 用 no-cache 而不是 no-store：檔案沒變的話回 304，不會真的重傳，很便宜。
+# 不設的話家人會看到舊的族譜/相簿，而且不知道要清快取。
+/data/*
+  Cache-Control: no-cache
+
+# 程式碼也一樣，改版要立刻生效
+/app.js
+  Cache-Control: no-cache
+/styles.css
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+
+# 照片和模型上傳後就不會再改（改了也是換檔名），可以放心讓瀏覽器長期快取
+/photos/*
+  Cache-Control: public, max-age=31536000, immutable
+/models/*
+  Cache-Control: public, max-age=31536000, immutable
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable

@@ -316,6 +316,104 @@ a { color: inherit; }
 .person-card .pname { font-family: var(--serif); font-weight: 600; font-size: .98rem; }
 .person-card .pcount { font-size: .75rem; color: var(--ink-faint); }
 
+/* ---------- 族譜 ---------- */
+
+.tree-scroll {
+  overflow-x: auto;      /* 樹會長得比螢幕寬，讓它自己捲，別把頁面撐爆 */
+  padding: 1rem 0 1.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tree {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  min-width: min-content;
+  padding: 0 1rem;
+}
+
+.node { display: flex; flex-direction: column; align-items: center; }
+
+/* 一對夫妻併排 */
+.couple { display: flex; align-items: stretch; justify-content: center; gap: 0; }
+
+.tp-eq {
+  align-self: center;
+  width: 1.5rem; height: 2px;
+  background: var(--line);
+  flex: none;
+}
+
+/* 一個人的卡片 */
+.tp {
+  display: flex; flex-direction: column; align-items: center;
+  text-decoration: none;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: .85rem .7rem;
+  width: 8.5rem;
+  box-shadow: var(--shadow);
+  transition: transform .15s, border-color .15s;
+}
+.tp:hover { transform: translateY(-2px); border-color: var(--accent); }
+.tp.m { border-top: 3px solid #7d9cc0; }
+.tp.f { border-top: 3px solid #c98b9b; }
+
+.tp-av {
+  width: 54px; height: 54px; border-radius: 50%;
+  background: var(--paper-2) center/cover no-repeat;
+  margin-bottom: .5rem;
+  display: grid; place-items: center;
+  font-family: var(--serif); font-size: 1.4rem; color: var(--ink-faint);
+  flex: none;
+}
+.tp-name { font-family: var(--serif); font-weight: 600; font-size: .98rem; text-align: center; }
+.tp-sub { font-size: .7rem; color: var(--ink-faint); text-align: center; margin-top: .1rem; line-height: 1.4; }
+
+/* 連接線：夫妻下方拉一條主幹，再分岔到每個小孩 */
+.branch {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  padding-top: 1.25rem;   /* 主幹長度 */
+}
+.branch::before {
+  content: '';
+  position: absolute; top: 0; left: 50%;
+  width: 2px; height: 1.25rem;
+  margin-left: -1px;
+  background: var(--line);
+}
+
+.child { position: relative; padding: 2.5rem .6rem 0; }
+/* 橫桿：接到每個小孩的正上方 */
+.child::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--line);
+}
+.child:first-child::before { left: 50%; }
+.child:last-child::before { right: 50%; }
+.child:only-child::before { display: none; }
+/* 從橫桿垂直往下接到小孩的卡片 */
+.child::after {
+  content: '';
+  position: absolute; top: 0; left: 50%;
+  width: 2px; height: 2.5rem;
+  margin-left: -1px;
+  background: var(--line);
+}
+
+@media (max-width: 640px) {
+  .tp { width: 7rem; padding: .6rem .4rem; }
+  .tp-av { width: 44px; height: 44px; }
+  .tp-name { font-size: .88rem; }
+  .tree { gap: 1.5rem; }
+  .child { padding-left: .3rem; padding-right: .3rem; }
+}
+
 /* ---------- 燈箱 ---------- */
 
 .lightbox {

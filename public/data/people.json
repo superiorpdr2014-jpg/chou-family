@@ -1,3 +1,60 @@
 {
-  "people": []
+  "_說明": "家族名冊與族譜。id 用英數所以不會變，name 是顯示用的。refs 是人臉特徵值，用來在照片裡認人；沒有 refs 的人只會出現在族譜上，不參與照片辨識。",
+  "_關係怎麼寫": "parents 填爸媽的 id，spouse 填配偶的 id（雙方都要填）。children 不用填，系統會從 parents 反推。",
+  "people": [
+    {
+      "id": "zhou-zhennan",
+      "name": "周振南",
+      "gender": "M",
+      "note": "Jay 的外公",
+      "spouse": ["zhou-fen"],
+      "parents": [],
+      "refs": []
+    },
+    {
+      "id": "zhou-fen",
+      "name": "周粉",
+      "gender": "F",
+      "note": "Jay 的外婆",
+      "spouse": ["zhou-zhennan"],
+      "parents": [],
+      "refs": []
+    },
+    {
+      "id": "zhou-yuechun",
+      "name": "周月春",
+      "gender": "F",
+      "note": "周振南與周粉的女兒",
+      "spouse": ["huang-zhaorui"],
+      "parents": ["zhou-zhennan", "zhou-fen"],
+      "refs": []
+    },
+    {
+      "id": "huang-zhaorui",
+      "name": "黃昭瑞",
+      "gender": "M",
+      "note": "周月春的先生",
+      "spouse": ["zhou-yuechun"],
+      "parents": [],
+      "refs": []
+    },
+    {
+      "id": "huang-yuwen",
+      "name": "黃裕文",
+      "gender": "M",
+      "note": "周月春與黃昭瑞的兒子",
+      "spouse": [],
+      "parents": ["zhou-yuechun", "huang-zhaorui"],
+      "refs": []
+    },
+    {
+      "id": "huang-yuren",
+      "name": "黃裕仁",
+      "gender": "M",
+      "note": "周月春與黃昭瑞的兒子",
+      "spouse": [],
+      "parents": ["zhou-yuechun", "huang-zhaorui"],
+      "refs": []
+    }
+  ]
 }
