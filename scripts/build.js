@@ -128,6 +128,13 @@ async function detectFaces(buffer) {
 
 async function main() {
   if (!fs.existsSync(SRC)) {
+    // 沒有來源照片，但資料已經建好了 —— 這是在 Cloudflare 之類的地方跑到的情況
+    // （原始照片是 gitignored 的，本來就不會在那裡）。直接放行，別把部署搞掛。
+    if (fs.existsSync(path.join(DATA, 'albums.json'))) {
+      log(`沒有來源資料夾 ${SRC}，但 public/data 已經有建好的資料 — 跳過建置。`);
+      log(`（部署不需要重跑建置，照片和特徵值都已經在 repo 裡了。）`);
+      return;
+    }
     console.error(`找不到來源資料夾：${SRC}`);
     console.error(`把相簿資料夾放進 photos-source/，或用 node scripts/build.js "來源路徑"`);
     process.exit(1);
