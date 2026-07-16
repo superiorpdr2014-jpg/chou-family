@@ -5,7 +5,9 @@
   "scripts": {
     "build": "node scripts/build.js",
     "probe": "node scripts/probe.js",
-    "serve": "npx --yes serve public"
+    "serve": "npx --yes serve public",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
   },
   "type": "commonjs",
   "dependencies": {
@@ -14,5 +16,8 @@
     "@vladmandic/face-api": "^1.7.15",
     "sharp": "^0.35.3"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "wrangler": "^4.111.0"
+  }
 }
