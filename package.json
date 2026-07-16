@@ -1,0 +1,18 @@
+{
+  "name": "chou-family",
+  "version": "1.0.0",
+  "description": "周氏大家族的點點滴滴 — 家族相簿與人臉搜尋",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "probe": "node scripts/probe.js",
+    "serve": "npx --yes serve public"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-backend-wasm": "^4.22.0",
+    "@vladmandic/face-api": "^1.7.15",
+    "sharp": "^0.35.3"
+  },
+  "private": true
+}

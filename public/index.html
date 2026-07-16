@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>周氏大家族的點點滴滴</title>
+<meta name="description" content="周氏大家族的相簿與回憶。上傳一張自己的照片，就能找出所有相簿裡有你的合影。">
+<meta property="og:title" content="周氏大家族的點點滴滴">
+<meta property="og:description" content="周氏大家族的相簿與回憶">
+<meta property="og:image" content="photos/2024427/w/0014.webp">
+<meta name="theme-color" content="#1a1512">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%239a5b3d'/%3E%3Ctext x='32' y='45' font-size='40' font-family='serif' fill='%23faf7f2' text-anchor='middle'%3E%E5%91%A8%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar" id="topbar">
+  <a class="brand" href="#/">周氏大家族</a>
+  <nav class="nav">
+    <a href="#/">相簿</a>
+    <a href="#/people">家人</a>
+    <a href="#/find" class="nav-cta">找出我的照片</a>
+  </nav>
+</header>
+
+<main id="view"></main>
+
+<footer class="footer">
+  <p>周氏大家族的點點滴滴</p>
+  <p class="muted" id="footer-stats"></p>
+</footer>
+
+<!-- 燈箱 -->
+<div class="lightbox" id="lightbox" hidden>
+  <button class="lb-close" id="lb-close" aria-label="關閉">&times;</button>
+  <button class="lb-nav lb-prev" id="lb-prev" aria-label="上一張">&#8249;</button>
+  <button class="lb-nav lb-next" id="lb-next" aria-label="下一張">&#8250;</button>
+  <div class="lb-stage" id="lb-stage">
+    <div class="lb-imgwrap" id="lb-imgwrap">
+      <img id="lb-img" alt="">
+      <div class="lb-faces" id="lb-faces"></div>
+    </div>
+  </div>
+  <div class="lb-bar">
+    <span id="lb-caption" class="lb-caption"></span>
+    <span class="lb-actions">
+      <button class="lb-btn" id="lb-toggle-faces">顯示人臉</button>
+      <a class="lb-btn" id="lb-download" download>下載原圖</a>
+    </span>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="vendor/face-api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
