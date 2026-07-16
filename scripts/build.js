@@ -53,7 +53,9 @@ function parseAlbumName(name) {
   const m = name.match(/^(\d+)\s*(.*)$/);
   if (!m) return { id: slug(name), date: null, title: name };
   const digits = m[1];
-  const rest = m[2].trim();
+  // LINE 匯出的資料夾常帶一段 "_260716" 的匯出日期，那不是標題的一部分
+  // 例：「20170610_260716 黃裕文婚禮」→「黃裕文婚禮」
+  const rest = m[2].replace(/^_\d+/, '').replace(/^[_\-\s]+/, '').trim();
   let y = null, mo = null, d = null;
   if (digits.length === 8) { y = digits.slice(0, 4); mo = digits.slice(4, 6); d = digits.slice(6, 8); }
   else if (digits.length === 7) { y = digits.slice(0, 4); mo = digits.slice(4, 5); d = digits.slice(5, 7); }
