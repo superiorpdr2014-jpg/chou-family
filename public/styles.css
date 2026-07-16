@@ -414,6 +414,18 @@ a { color: inherit; }
   .child { padding-left: .3rem; padding-right: .3rem; }
 }
 
+/* 人物頁的大頭照 */
+.person-head { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.75rem; flex-wrap: wrap; }
+.person-av {
+  width: 92px; height: 92px; border-radius: 50%;
+  background: var(--paper-2) center/cover no-repeat;
+  border: 3px solid #fff;
+  box-shadow: var(--shadow);
+  display: grid; place-items: center;
+  font-family: var(--serif); font-size: 2rem; color: var(--ink-faint);
+  flex: none;
+}
+
 /* ---------- 燈箱 ---------- */
 
 .lightbox {

@@ -541,13 +541,20 @@ function photoCount(person) {
 function personCardHtml(p) {
   const n = photoCount(p);
   const initial = (p.name || '?').trim().charAt(0);
-  const hasFace = p.refs && p.refs.length;
+  const av = avatarOf(p);
   return `
     <a class="tp ${p.gender === 'F' ? 'f' : p.gender === 'M' ? 'm' : ''}" href="#/person/${encodeURIComponent(p.id)}">
-      <span class="tp-av" ${hasFace ? `data-crop="${esc(JSON.stringify(p.refs[0]))}"` : ''}>${hasFace ? '' : esc(initial)}</span>
+      <span class="tp-av" ${av ? `data-crop="${esc(JSON.stringify(av))}"` : ''}>${av ? '' : esc(initial)}</span>
       <span class="tp-name">${esc(p.name)}</span>
       <span class="tp-sub">${n ? n + ' 張照片' : (p.note ? esc(p.note) : '還沒認照片')}</span>
     </a>`;
+}
+
+/** 大頭照：優先用建置時挑好的那張，沒有就退回第一張指認的臉 */
+function avatarOf(p) {
+  if (p.avatar && p.avatar.p) return p.avatar;
+  if (p.refs && p.refs.length) return p.refs[0];
+  return null;
 }
 
 /** 遞迴畫一個家庭：一對夫妻（或單身）＋他們的小孩 */
@@ -651,13 +658,17 @@ function renderPerson(id) {
   if (spouses.length) rel.push(`配偶：${spouses.map(link).join('、')}`);
   if (kids.length) rel.push(`子女：${kids.map(link).join('、')}`);
 
+  const av = avatarOf(person);
   view().innerHTML = `
     <div class="wrap">
       <a class="back-link" href="#/people">← 回到族譜</a>
-      <div class="section-head">
-        <h2>${esc(person.name)}</h2>
-        ${person.note ? `<p>${esc(person.note)}</p>` : ''}
-        ${rel.length ? `<p style="margin-top:.5rem">${rel.join(' ｜ ')}</p>` : ''}
+      <div class="person-head">
+        <span class="person-av" ${av ? `data-crop="${esc(JSON.stringify(av))}"` : ''}>${av ? '' : esc((person.name || '?').charAt(0))}</span>
+        <div class="section-head" style="margin:0">
+          <h2>${esc(person.name)}</h2>
+          ${person.note ? `<p>${esc(person.note)}</p>` : ''}
+          ${rel.length ? `<p style="margin-top:.5rem">${rel.join(' ｜ ')}</p>` : ''}
+        </div>
       </div>
       ${matches.length ? `<p class="muted" style="margin-bottom:1.5rem">找到 ${matches.length} 張照片，橫跨 ${groups.length} 個相簿</p>` : ''}
       <div id="pres">
@@ -682,6 +693,8 @@ function renderPerson(id) {
            在照片上用管理模式點他的臉命名，或請他自己來「<a href="#/find">找出我的照片</a>」。</p>
       </div>` : ''}
     </div>`;
+
+  hydrateAvatars();
 
   const order = matches.map((m) => m.pi);
   $('#pres').addEventListener('click', (e) => {

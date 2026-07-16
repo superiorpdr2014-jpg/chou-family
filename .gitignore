@@ -1,5 +1,11 @@
 node_modules/
 probe.jpg
+faces-of.jpg
+faces-*.jpg
+avatars.jpg
 photos-source/
 .DS_Store
 Thumbs.db
+
+# 現有的 GitHub 權杖沒有 workflow 權限，推不上去；等 Jay 換權杖或用網頁貼上
+.github/workflows/
