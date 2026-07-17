@@ -152,7 +152,17 @@ const LABELS = {
    *    這是品質門檻的誤判（他離鏡頭太近），裁切看起來完全可用，所以照樣拿來當參考臉。
    */
   'wang-xingwan': [1561],             // 王興萬：白T的長輩
-  'wang-peiqi-husband': [1563],       // 王姵棋的老公：最右、藍點襯衫
+  /*
+   * ⚠️ 這位戴眼鏡、藍襯衫的是【王靚如】的老公，不是王姵棋的老公。
+   * 來回釐清的過程：
+   *   _46 Jay 說「右起王姵棋老公與王姵棋」→ 我標成王姵棋的老公
+   *   _6  Jay 說他是「王靚如的老公」，但比對說他就是 _46 那位(0.342)
+   *   我問「哪個對」，Jay 答「兩張都是王姵棋的老公」
+   *   _42 Jay 又說「左起才是王姵棋的老公」—— 而 _42 那位跟他距離 0.566，是不同人
+   *   最後 Jay 確認：_46/_6 這位是王靚如的老公，_42 那位才是王姵棋的老公
+   * 比對從頭到尾都是對的（0.342 同一人、0.566 不同人），是描述來回。
+   */
+  'wang-jingru-husband': [1563, 1619],
 
   /*
    * 餐敍 _18：Jay 口述「左起是黃裕仁夫妻老婆叫 Amber，以及黃裕文夫妻，老婆叫吳嘉芸」
@@ -208,6 +218,10 @@ const LABELS = {
    */
   'wang-jingru': [1617],              // 王靚如：最右、牛仔襯衫
 
+  // 20161001 慶生 _42：Jay 確認「左起才是王姵棋的老公」（深藍 polo、沒戴眼鏡）
+  // 同張王姵棋 0.376、她兒子 0.375 也都在，合理
+  'wang-peiqi-husband': [2883],
+
   /*
    * 20181020 _12：Jay 說「後排右邊巫冠瀚、左邊周月足」
    * 周月足 0.404、巫冠瀚 0.437 位置吻合，兩人都已有參考臉，這裡不重複標
@@ -230,14 +244,31 @@ const LABELS = {
    */
   'xu-ruiling': [4416],
 
-  // 二房辦聚會 _18：Jay 口述「吳依真與黃紅娟(左)」
-  'huang-hongjuan': [1344],           // 黃紅娟：左，粉紅上衣
-  'wu-yizhen': [1343],                // 吳依真：右
+  /*
+   * 吳依真全家（Jay 指定用這張當大頭照）：
+   *   20131012 壽宴 _27（畫質好，125~149px）→ 黃紅娟 0.329 ✅、吳依真 0.306 ✅ 驗證，
+   *   所以中間坐著那位(#2)就是吳國憲。
+   *   把這張放在第一順位，refs[0] 會被當大頭照的保底來源。
+   * 另一組 1344/1343 是二房辦聚會 _18（Jay 口述「吳依真與黃紅娟(左)」）。
+   */
+  'huang-hongjuan': [4619, 1344],
+  'wu-yizhen': [4620, 1343],
+  'wu-guoxian': [4621],               // 吳國憲：中間坐著
 
   // 2024 母親節 _12（張文馨與張家瑜）目前不標 ——
   // 左邊那個女孩戴墨鏡，眼睛被遮住特徵值就毀了；拿張家瑜已知的臉去比，
   // 左 0.478 / 右 0.501 兩邊都不及格且差距只有 0.023（雜訊等級），
   // 分不出誰是誰。硬標會把姊妹搞混，等 Jay 確認再說。
+};
+
+/*
+ * 指定大頭照：Jay 說「這張比較好看／用這張」時就寫在這裡，
+ * 直接蓋過自動挑選。人的意見優先於評分公式。
+ */
+const AVATAR = {
+  'huang-hongjuan': 4619,   // 吳依真全家（20131012 壽宴 _27）
+  'wu-yizhen': 4620,
+  'wu-guoxian': 4621,
 };
 
 const MATCH_THRESHOLD = 0.40; // 跟前端一致
@@ -328,15 +359,21 @@ for (const person of people.people) {
    * 實例：王姵棋的兒子（2024 年 11 歲）本來被挑到一張 2016 年 277px 的幼童照，
    * 只因為臉大就贏過人工指認那張 140px/信心0.997 的。
    */
-  const best = (modelCanTrack && cands[0] && cands[0].score > fallback.score * 1.15)
+  let best = (modelCanTrack && cands[0] && cands[0].score > fallback.score * 1.15)
     ? cands[0] : fallback;
+
+  // Jay 指定的大頭照最大，直接蓋過上面所有自動挑選的邏輯
+  if (AVATAR[person.id] != null) {
+    const i = AVATAR[person.id];
+    best = { i, f: faces.faces[i], d: 0, score: avatarScore(faces.faces[i]), forced: true };
+  }
   const photo = faces.photos[best.f.p];
   person.avatar = { p: photo.w, b: best.f.b };
   console.log(
     `${person.name.padEnd(5)} 標 ${idxs.length} 張 · 夠確定的候選 ${String(cands.length).padStart(3)} 張 · ` +
     `大頭照 ${photo.a}/${photo.src.slice(-10)} ${String(best.f.px).padStart(3)}px 信心${best.f.s} ` +
-    `距離${best.d.toFixed(2)}${best === fallback ? ' (用人工指認那張)' : ''}` +
-    (modelCanTrack ? '' : ` ⚠️ 模型認不出這個人(自我距離 ${selfDist.toFixed(2)})，只用人工指認的臉`)
+    `距離${best.d.toFixed(2)}${best.forced ? ' ← Jay 指定' : best === fallback ? ' (用人工指認那張)' : ''}` +
+    (modelCanTrack || best.forced ? '' : ` ⚠️ 模型認不出這個人(自我距離 ${selfDist.toFixed(2)})，只用人工指認的臉`)
   );
   labelled++;
 }
