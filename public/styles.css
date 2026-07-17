@@ -322,13 +322,18 @@ a { color: inherit; }
   overflow-x: auto;      /* 樹會長得比螢幕寬，讓它自己捲，別把頁面撐爆 */
   padding: 1rem 0 1.5rem;
   -webkit-overflow-scrolling: touch;
+  display: flex;         /* 配下面的 margin:auto 用來置中 */
 }
 
+/*
+ * 這裡不能用 justify-content: center。
+ * flexbox 的老問題：內容比容器寬的時候，center 會把溢出的「左半邊」切掉而且捲不到，
+ * 周振南那對夫妻就會永遠躲在畫面外。改用 margin:auto，溢出時兩邊都捲得到。
+ */
 .tree {
   display: flex;
-  justify-content: center;
-  gap: 3rem;
-  min-width: min-content;
+  margin: 0 auto;
+  gap: 2rem;
   padding: 0 1rem;
 }
 
@@ -351,8 +356,8 @@ a { color: inherit; }
   background: #fff;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: .85rem .7rem;
-  width: 8.5rem;
+  padding: .6rem .45rem;
+  width: 6.4rem;   /* 兄弟姊妹有 9 個，卡片太寬整棵樹會寬到沒辦法看 */
   box-shadow: var(--shadow);
   transition: transform .15s, border-color .15s;
 }
@@ -361,15 +366,19 @@ a { color: inherit; }
 .tp.f { border-top: 3px solid #c98b9b; }
 
 .tp-av {
-  width: 54px; height: 54px; border-radius: 50%;
+  width: 46px; height: 46px; border-radius: 50%;
   background: var(--paper-2) center/cover no-repeat;
-  margin-bottom: .5rem;
+  margin-bottom: .4rem;
   display: grid; place-items: center;
-  font-family: var(--serif); font-size: 1.4rem; color: var(--ink-faint);
+  font-family: var(--serif); font-size: 1.2rem; color: var(--ink-faint);
   flex: none;
 }
-.tp-name { font-family: var(--serif); font-weight: 600; font-size: .98rem; text-align: center; }
-.tp-sub { font-size: .7rem; color: var(--ink-faint); text-align: center; margin-top: .1rem; line-height: 1.4; }
+.tp-name { font-family: var(--serif); font-weight: 600; font-size: .88rem; text-align: center; white-space: nowrap; }
+.tp-sub {
+  font-size: .65rem; color: var(--ink-faint); text-align: center; margin-top: .1rem; line-height: 1.35;
+  /* 沒照片的人會顯示 note，太長會把卡片撐高、整排跟著變高，截兩行就好 */
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
 
 /* 連接線：夫妻下方拉一條主幹，再分岔到每個小孩 */
 .branch {

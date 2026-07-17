@@ -625,6 +625,13 @@ function renderTree() {
     </div>`;
 
   hydrateAvatars();
+
+  // 樹比螢幕寬的時候，預設捲到中間，不然一打開只看到最左邊那一房。
+  // 要等瀏覽器排版完才知道 scrollWidth，直接設會拿到 0。
+  requestAnimationFrame(() => {
+    const sc = $('.tree-scroll');
+    if (sc) sc.scrollLeft = (sc.scrollWidth - sc.clientWidth) / 2;
+  });
 }
 
 /** 頭像是從照片裡把臉裁出來的，等畫面畫好再補上 */
