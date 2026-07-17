@@ -68,9 +68,25 @@ const LABELS = {
 
   // 文成、俞穎婚宴 _30：Jay 口述「我(馬成傑)、馬睿呈、巫俞穎、黃文成」，左起
   'ma-chengjie': [405],               // 馬成傑（Jay 本人）：最左，條紋衣
-  'ma-ruicheng': [406],               // 馬睿呈：前面的小男孩
+  /*
+   * 馬睿呈：406 = 婚宴照(2019-12)、1265 = 二房辦聚會(2019-09) 前排小男生，
+   * 兩張都是 Jay 親自指認的。
+   *
+   * ⚠️ 幼童的臉部辨識基本上不能用：拿 406 去比同一張照片，
+   *   同一個他（1265，只差 3 個月）→ 0.436
+   *   馬惟薇（不同小孩，還是女生）  → 0.373  ← 竟然更近
+   * 模型眼中小孩都長一樣。所以這裡以 Jay 的指認為準，不是以距離為準。
+   */
+  'ma-ruicheng': [406, 1265],
   'wu-yuying': [407],                 // 巫俞穎：新娘
   'huang-wencheng': [408],            // 黃文成：新郎
+
+  // 二房辦聚會 _11：Jay 口述（馬肇均 0.299✅、馬惟薇 0.344✅ 驗證位置無誤）
+  'sun-weixin': [1268],               // 孫瑋欣（Jay 的太太）：第三排戴口罩那位
+
+  // 二房辦聚會 _18：Jay 口述「吳依真與黃紅娟(左)」
+  'huang-hongjuan': [1344],           // 黃紅娟：左，粉紅上衣
+  'wu-yizhen': [1343],                // 吳依真：右
 
   // 2024 母親節 _12（張文馨與張家瑜）目前不標 ——
   // 左邊那個女孩戴墨鏡，眼睛被遮住特徵值就毀了；拿張家瑜已知的臉去比，
@@ -143,21 +159,38 @@ for (const person of people.people) {
     .sort((a, b) => b.score - a.score)[0];
 
   /*
+   * 自我檢查：這個人有兩張以上人工指認的臉時，那些臉彼此應該很近（都是同一個人）。
+   * 如果連「他自己 vs 他自己」都對不上，代表模型根本認不出這個人，
+   * 那用比對去全庫找他的照片一定是錯的 —— 這種人只能用人工指認的臉。
+   *
+   * 實例：馬睿呈（幼童）兩張都是 Jay 親自指認、只差 3 個月，彼此距離卻是 0.436；
+   * 而他跟馬惟薇（不同小孩、女生）只有 0.373。模型眼中幼童都長一樣。
+   */
+  let selfDist = 0;
+  for (let a = 0; a < idxs.length; a++) {
+    for (let b = a + 1; b < idxs.length; b++) {
+      selfDist = Math.max(selfDist, dist(at(idxs[a]), at(idxs[b])));
+    }
+  }
+  const modelCanTrack = idxs.length < 2 || selfDist <= AVATAR_MAX_DIST;
+
+  /*
    * 機器找到的要「明顯」比人工指認的好，才准取代（好 15% 以上）。
    * 人工指認的臉 100% 是本人，機器找的永遠有認錯的風險 ——
    * 只為了臉大一點就冒認錯人的險，不划算。
    *
    * 實例：王姵棋的兒子（2024 年 11 歲）本來被挑到一張 2016 年 277px 的幼童照，
-   * 只因為臉大就贏過人工指認那張 140px/信心0.997 的。小孩 3 歲跟 11 歲的臉
-   * 差太多，跨年份比對根本不可信，那張很可能根本是別的小孩。
+   * 只因為臉大就贏過人工指認那張 140px/信心0.997 的。
    */
-  const best = cands[0] && cands[0].score > fallback.score * 1.15 ? cands[0] : fallback;
+  const best = (modelCanTrack && cands[0] && cands[0].score > fallback.score * 1.15)
+    ? cands[0] : fallback;
   const photo = faces.photos[best.f.p];
   person.avatar = { p: photo.w, b: best.f.b };
   console.log(
     `${person.name.padEnd(5)} 標 ${idxs.length} 張 · 夠確定的候選 ${String(cands.length).padStart(3)} 張 · ` +
     `大頭照 ${photo.a}/${photo.src.slice(-10)} ${String(best.f.px).padStart(3)}px 信心${best.f.s} ` +
-    `距離${best.d.toFixed(2)}${best === fallback ? ' (用人工指認那張)' : ''}`
+    `距離${best.d.toFixed(2)}${best === fallback ? ' (用人工指認那張)' : ''}` +
+    (modelCanTrack ? '' : ` ⚠️ 模型認不出這個人(自我距離 ${selfDist.toFixed(2)})，只用人工指認的臉`)
   );
   labelled++;
 }
