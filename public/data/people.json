@@ -3,14 +3,39 @@
   "_關係怎麼寫": "parents 填爸媽的 id，spouse 填配偶的 id（雙方都要填）。children 不用填，系統會從 parents 反推。",
   "people": [
     {
+      "id": "zhou-great-grandfather",
+      "name": "曾祖父",
+      "gender": "M",
+      "note": "周振源、周振南、周振裕的父親（本名待補）",
+      "spouse": [
+        "zhou-great-grandmother"
+      ],
+      "parents": [],
+      "refs": []
+    },
+    {
+      "id": "zhou-great-grandmother",
+      "name": "曾祖母",
+      "gender": "F",
+      "note": "周振源、周振南、周振裕的母親（本名待補）",
+      "spouse": [
+        "zhou-great-grandfather"
+      ],
+      "parents": [],
+      "refs": []
+    },
+    {
       "id": "zhou-zhennan",
       "name": "周振南",
       "gender": "M",
-      "note": "Jay 的外公",
+      "note": "Jay 外公的二弟",
       "spouse": [
-        "zhou-fen"
+        "zhou-yuyan"
       ],
-      "parents": [],
+      "parents": [
+        "zhou-great-grandfather",
+        "zhou-great-grandmother"
+      ],
       "refs": []
     },
     {
@@ -19,7 +44,7 @@
       "gender": "F",
       "note": "Jay 的外婆",
       "spouse": [
-        "zhou-zhennan"
+        "zhou-zhenyuan"
       ],
       "parents": [],
       "refs": [
@@ -460,7 +485,7 @@
         "huang-zhaorui"
       ],
       "parents": [
-        "zhou-zhennan",
+        "zhou-zhenyuan",
         "zhou-fen"
       ],
       "refs": [
@@ -1522,7 +1547,7 @@
         "ma-shunjin"
       ],
       "parents": [
-        "zhou-zhennan",
+        "zhou-zhenyuan",
         "zhou-fen"
       ],
       "refs": [
@@ -2361,7 +2386,7 @@
       "note": "周振南與周粉的女兒（大阿姨）",
       "spouse": [],
       "parents": [
-        "zhou-zhennan",
+        "zhou-zhenyuan",
         "zhou-fen"
       ],
       "refs": [
@@ -2522,7 +2547,7 @@
       "note": "周振南與周粉的女兒（二阿姨）",
       "spouse": [],
       "parents": [
-        "zhou-zhennan",
+        "zhou-zhenyuan",
         "zhou-fen"
       ],
       "refs": [
@@ -2683,7 +2708,7 @@
       "note": "周振南與周粉的女兒（三阿姨）",
       "spouse": [],
       "parents": [
-        "zhou-zhennan",
+        "zhou-zhenyuan",
         "zhou-fen"
       ],
       "refs": [
@@ -2846,7 +2871,7 @@
         "wang-yongming"
       ],
       "parents": [
-        "zhou-zhennan",
+        "zhou-zhenyuan",
         "zhou-fen"
       ],
       "refs": [
@@ -3169,7 +3194,7 @@
         "wu-zhenqi"
       ],
       "parents": [
-        "zhou-zhennan",
+        "zhou-zhenyuan",
         "zhou-fen"
       ],
       "refs": [
@@ -3332,7 +3357,7 @@
         "chen-jingmei"
       ],
       "parents": [
-        "zhou-zhennan",
+        "zhou-zhenyuan",
         "zhou-fen"
       ],
       "refs": [
@@ -3653,7 +3678,7 @@
       "note": "周振南與周粉的兒子（Jay 的小舅舅）",
       "spouse": [],
       "parents": [
-        "zhou-zhennan",
+        "zhou-zhenyuan",
         "zhou-fen"
       ],
       "refs": [
@@ -4618,6 +4643,43 @@
           0.10376
         ]
       }
+    },
+    {
+      "id": "zhou-zhenyuan",
+      "name": "周振源",
+      "gender": "M",
+      "note": "Jay 的外公",
+      "spouse": [
+        "zhou-fen"
+      ],
+      "parents": [
+        "zhou-great-grandfather",
+        "zhou-great-grandmother"
+      ],
+      "refs": []
+    },
+    {
+      "id": "zhou-yuyan",
+      "name": "周玉燕",
+      "gender": "F",
+      "note": "周振南的太太",
+      "spouse": [
+        "zhou-zhennan"
+      ],
+      "parents": [],
+      "refs": []
+    },
+    {
+      "id": "zhou-zhenyu",
+      "name": "周振裕",
+      "gender": "M",
+      "note": "Jay 外公的小弟",
+      "spouse": [],
+      "parents": [
+        "zhou-great-grandfather",
+        "zhou-great-grandmother"
+      ],
+      "refs": []
     }
   ]
 }
