@@ -570,8 +570,14 @@ function countBelow(person, ctx, seen = new Set()) {
   return n;
 }
 
-/** 大頭照：優先用建置時挑好的那張，沒有就退回第一張指認的臉 */
+/**
+ * 大頭照，優先序：
+ *   1. 家人自己上傳的獨立照片 {img}
+ *   2. 建置時從相簿照片挑好的臉 {p, b}
+ *   3. 退回第一張人工指認的臉
+ */
 function avatarOf(p) {
+  if (p.avatar && p.avatar.img) return p.avatar;
   if (p.avatar && p.avatar.p) return p.avatar;
   if (p.refs && p.refs.length) return p.refs[0];
   return null;
@@ -722,7 +728,14 @@ function hydrateAvatars() {
   for (const el of document.querySelectorAll('[data-crop]')) {
     let ref;
     try { ref = JSON.parse(el.dataset.crop); } catch { continue; }
-    if (!ref || !ref.p) continue;
+    if (!ref) continue;
+    // 家人自己上傳的照片：整張當頭像，不用裁臉
+    if (ref.img) {
+      el.style.backgroundImage = `url(${ref.img})`;
+      el.textContent = '';
+      continue;
+    }
+    if (!ref.p) continue;
     loadImage(ref.p).then((img) => {
       el.style.backgroundImage = `url(${cropFace(img, ref.b, 160)})`;
       el.textContent = '';
@@ -760,6 +773,10 @@ function renderPerson(id) {
           ${rel.length ? `<p style="margin-top:.5rem">${rel.join(' ｜ ')}</p>` : ''}
         </div>
       </div>
+      <p style="margin:-.75rem 0 1.5rem">
+        <button class="btn btn-ghost btn-sm" id="edit-open">✎ 修正這個人的資料</button>
+      </p>
+      <div id="edit-box"></div>
       ${matches.length ? `<p class="muted" style="margin-bottom:1.5rem">找到 ${matches.length} 張照片，橫跨 ${groups.length} 個相簿</p>` : ''}
       <div id="pres">
         ${groups.map((g) => `
@@ -785,12 +802,193 @@ function renderPerson(id) {
     </div>`;
 
   hydrateAvatars();
+  $('#edit-open').addEventListener('click', () => renderEditForm(person));
 
   const order = matches.map((m) => m.pi);
   $('#pres').addEventListener('click', (e) => {
     const btn = e.target.closest('.tile');
     if (btn) openLightbox(order, order.indexOf(+btn.dataset.pi));
   });
+}
+
+/* ============ 家人修正族譜資料 ============ */
+
+function renderEditForm(person) {
+  const box = $('#edit-box');
+  if (box.dataset.open) { box.innerHTML = ''; delete box.dataset.open; return; }
+  box.dataset.open = '1';
+
+  box.innerHTML = `
+    <div class="panel" style="margin-bottom:1.5rem">
+      <h3>修正「${esc(person.name)}」的資料</h3>
+      <p class="hint">送出後會先進待審清單，Jay 看過才會更新到族譜上。<b>沒填的欄位不會動到。</b></p>
+
+      <div class="edit-grid">
+        <label class="fld">
+          <span>名字寫錯了？</span>
+          <input class="input" id="ed-name" placeholder="${esc(person.name)}" maxlength="20">
+        </label>
+        <label class="fld">
+          <span>換一張大頭照</span>
+          <input class="input" id="ed-avatar" type="file" accept="image/*">
+        </label>
+        <label class="fld">
+          <span>新增另一半</span>
+          <input class="input" id="ed-spouse" placeholder="配偶的名字" maxlength="20">
+        </label>
+        <label class="fld">
+          <span>新增小孩（一行一個）</span>
+          <textarea class="input" id="ed-kids" rows="3" placeholder="小孩的名字&#10;有多個就換行"></textarea>
+        </label>
+        <label class="fld">
+          <span>你是誰？</span>
+          <input class="input" id="ed-by" placeholder="你的名字" maxlength="20" value="${esc(localStorage.getItem('chou-name') || '')}">
+        </label>
+        <label class="fld">
+          <span>家族密碼</span>
+          <input class="input" id="ed-pw" type="password" value="${esc(localStorage.getItem('chou-pw') || '')}">
+        </label>
+      </div>
+
+      <div style="margin-top:1.25rem; display:flex; gap:.5rem; align-items:center; flex-wrap:wrap">
+        <button class="btn" id="ed-send">送出修正</button>
+        <button class="btn btn-ghost" id="ed-cancel">取消</button>
+        <span class="muted" id="ed-msg"></span>
+      </div>
+    </div>`;
+
+  $('#ed-cancel').addEventListener('click', () => { box.innerHTML = ''; delete box.dataset.open; });
+  $('#ed-send').addEventListener('click', () => submitEdit(person));
+}
+
+async function submitEdit(person) {
+  const name = $('#ed-name').value.trim();
+  const spouse = $('#ed-spouse').value.trim();
+  const kids = $('#ed-kids').value.split('\n').map((s) => s.trim()).filter(Boolean);
+  const by = $('#ed-by').value.trim();
+  const pw = $('#ed-pw').value;
+  const file = $('#ed-avatar').files[0];
+
+  if (!pw) return toast('請輸入家族密碼');
+  if (!by) return toast('請填你的名字，讓 Jay 知道是誰改的');
+  if (!name && !spouse && !kids.length && !file) return toast('沒有填任何要改的東西');
+
+  localStorage.setItem('chou-pw', pw);
+  localStorage.setItem('chou-name', by);
+
+  const fd = new FormData();
+  fd.append('password', pw);
+  fd.append('submittedBy', by);
+  fd.append('target', person.id);
+  fd.append('targetName', person.name);
+  if (name) fd.append('name', name);
+  if (spouse) fd.append('addSpouse', spouse);
+  if (kids.length) fd.append('addChildren', JSON.stringify(kids));
+  if (file) fd.append('avatar', file, file.name);
+
+  $('#ed-send').disabled = true;
+  $('#ed-msg').textContent = '送出中…';
+  try {
+    const res = await fetch('/api/propose', { method: 'POST', body: fd });
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error || '送出失敗');
+    $('#edit-box').innerHTML = `
+      <div class="panel" style="margin-bottom:1.5rem">
+        <h3>收到了，謝謝你 🙏</h3>
+        <p class="hint">你的修正已經送出，Jay 看過確認後就會更新到族譜上。</p>
+      </div>`;
+  } catch (err) {
+    $('#ed-send').disabled = false;
+    $('#ed-msg').textContent = '';
+    toast(err.message, 5000);
+  }
+}
+
+/* ============ 畫面：待審清單（只有 Jay 用） ============ */
+
+function renderReview() {
+  view().innerHTML = `
+    <div class="wrap">
+      <div class="finder">
+        <div class="section-head">
+          <h2>待審的修正</h2>
+          <p>家人提出的族譜修正，你看過按核准才會更新到族譜上。</p>
+        </div>
+        <div class="panel">
+          <div class="field">
+            <input class="input" id="rv-pw" type="password" placeholder="管理員密碼"
+                   value="${esc(sessionStorage.getItem('chou-admin') || '')}">
+            <button class="btn" id="rv-load">看待審清單</button>
+          </div>
+        </div>
+        <div id="rv-list" style="margin-top:1.5rem"></div>
+      </div>
+    </div>`;
+
+  $('#rv-load').addEventListener('click', loadProposals);
+  if (sessionStorage.getItem('chou-admin')) loadProposals();
+}
+
+async function loadProposals() {
+  const pw = $('#rv-pw').value;
+  if (!pw) return toast('請輸入管理員密碼');
+  const box = $('#rv-list');
+  box.innerHTML = `<div class="loading"><span class="spinner"></span>載入中…</div>`;
+  try {
+    const res = await fetch('/api/review?password=' + encodeURIComponent(pw));
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error || '載入失敗');
+    sessionStorage.setItem('chou-admin', pw);
+
+    if (!out.proposals.length) {
+      box.innerHTML = `<div class="empty"><h3>目前沒有待審的修正</h3></div>`;
+      return;
+    }
+    box.innerHTML = out.proposals.map((p) => {
+      const c = p.changes || {};
+      const rows = [];
+      if (c.name) rows.push(`名字改成「<b>${esc(c.name)}</b>」`);
+      if (c.avatarImg) rows.push(`換大頭照`);
+      if (c.addSpouse) rows.push(`新增配偶「<b>${esc(c.addSpouse)}</b>」`);
+      if (c.addChildren) rows.push(`新增小孩「<b>${esc(c.addChildren.join('、'))}</b>」`);
+      return `
+        <div class="panel" style="margin-bottom:1rem" data-id="${esc(p.id)}">
+          <h3>${esc(p.targetName || p.target)}</h3>
+          <p class="hint">${esc(p.submittedBy)} 於 ${esc(p.submittedAt)} 提出</p>
+          ${c.avatarImg ? `<img src="${esc(c.avatarImg)}" alt="" style="width:90px;height:90px;object-fit:cover;border-radius:50%;margin:.5rem 0">` : ''}
+          <ul style="margin:.5rem 0 1rem; padding-left:1.2rem">${rows.map((r) => `<li>${r}</li>`).join('')}</ul>
+          <div style="display:flex; gap:.5rem; flex-wrap:wrap">
+            <button class="btn btn-sm" data-act="approve">核准</button>
+            <button class="btn btn-ghost btn-sm" data-act="reject">退回</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    box.onclick = async (e) => {
+      const btn = e.target.closest('[data-act]');
+      if (!btn) return;
+      const panel = btn.closest('[data-id]');
+      const id = panel.dataset.id;
+      const action = btn.dataset.act;
+      if (action === 'approve' && !confirm('確定要把這筆修正套用到族譜？')) return;
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/review', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ password: $('#rv-pw').value, id, action }),
+        });
+        const out = await res.json();
+        if (!res.ok) throw new Error(out.error || '失敗');
+        panel.innerHTML = `<p class="muted">${action === 'approve' ? '✅ 已採用：' + (out.log || []).join('、') : '已退回'}（重新整理後族譜就會更新）</p>`;
+      } catch (err) {
+        btn.disabled = false;
+        toast(err.message, 5000);
+      }
+    };
+  } catch (err) {
+    box.innerHTML = `<div class="empty"><h3>載入失敗</h3><p>${esc(err.message)}</p></div>`;
+  }
 }
 
 /* ============ 畫面：上傳照片 ============ */
@@ -1033,6 +1231,7 @@ function initAdmin() {
     <span>管理模式 — 打開任一張照片按「顯示人臉」，點人臉就能命名。
       <b id="draft-count">草稿 ${S.draft.people.length} 人</b></span>
     <span style="display:flex;gap:.5rem">
+      <a class="btn btn-sm" href="#/review" style="text-decoration:none">待審的修正</a>
       <button class="btn btn-sm" id="admin-export">匯出 people.json</button>
       <button class="btn btn-sm btn-ghost" id="admin-clear" style="color:#fff;border-color:rgba(255,255,255,.3)">清空草稿</button>
     </span>`;
@@ -1117,6 +1316,7 @@ function route() {
   if (page === 'find') return renderFind();
   if (page === 'upload') return renderUpload();
   if (page === 'people' || page === 'tree') return renderTree();
+  if (page === 'review') return renderReview();
   if (page === 'person' && arg) return renderPerson(decodeURIComponent(arg));
   renderNotFound();
 }

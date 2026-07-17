@@ -273,6 +273,12 @@ a { color: inherit; }
 }
 .input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 
+/* 家人修正資料的表單 */
+.edit-grid { display: grid; gap: .9rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+.fld { display: flex; flex-direction: column; gap: .3rem; }
+.fld > span { font-size: .82rem; color: var(--ink-soft); font-weight: 500; }
+.fld textarea.input { resize: vertical; line-height: 1.5; }
+
 .strictness { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; font-size: .85rem; color: var(--ink-soft); }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 100px; overflow: hidden; }
 .seg button {
