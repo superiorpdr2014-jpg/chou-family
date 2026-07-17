@@ -6,7 +6,7 @@
       "id": "zhou-great-grandfather",
       "name": "曾祖父",
       "gender": "M",
-      "note": "周振源、周振南、周振裕的父親（本名待補）",
+      "note": "周振源、周振南、周振裕的父親（已故，本名待補）",
       "spouse": [
         "zhou-great-grandmother"
       ],
@@ -17,7 +17,7 @@
       "id": "zhou-great-grandmother",
       "name": "曾祖母",
       "gender": "F",
-      "note": "周振源、周振南、周振裕的母親（本名待補）",
+      "note": "周振源、周振南、周振裕的母親（已故，本名待補）",
       "spouse": [
         "zhou-great-grandfather"
       ],
@@ -28,7 +28,7 @@
       "id": "zhou-zhennan",
       "name": "周振南",
       "gender": "M",
-      "note": "Jay 外公的二弟",
+      "note": "Jay 外公的二弟（已故）",
       "spouse": [
         "zhou-yuyan"
       ],
@@ -5394,7 +5394,7 @@
       "id": "zhou-zhenyuan",
       "name": "周振源",
       "gender": "M",
-      "note": "Jay 的外公",
+      "note": "Jay 的外公（已故）",
       "spouse": [
         "zhou-fen"
       ],
