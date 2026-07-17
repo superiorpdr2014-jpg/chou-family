@@ -4680,6 +4680,238 @@
         "zhou-great-grandmother"
       ],
       "refs": []
+    },
+    {
+      "id": "zhou-dongxing",
+      "name": "周東興",
+      "note": "周振南與周玉燕的兒子",
+      "spouse": [
+        "he-biyan"
+      ],
+      "parents": [
+        "zhou-zhennan",
+        "zhou-yuyan"
+      ],
+      "refs": [],
+      "gender": "M"
+    },
+    {
+      "id": "he-biyan",
+      "name": "何碧嬿",
+      "note": "周東興的太太",
+      "spouse": [
+        "zhou-dongxing"
+      ],
+      "parents": [],
+      "refs": [],
+      "gender": "F"
+    },
+    {
+      "id": "zhou-qinjia",
+      "name": "周沁嘉",
+      "note": "周東興與何碧嬿的小孩",
+      "spouse": [],
+      "parents": [
+        "zhou-dongxing",
+        "he-biyan"
+      ],
+      "refs": []
+    },
+    {
+      "id": "zhou-penghui",
+      "name": "周朋惠",
+      "note": "周振南與周玉燕的小孩",
+      "spouse": [],
+      "parents": [
+        "zhou-zhennan",
+        "zhou-yuyan"
+      ],
+      "refs": []
+    },
+    {
+      "id": "huang-hongjuan",
+      "name": "黃紅娟",
+      "note": "周振南的女兒",
+      "spouse": [
+        "wu-guoxian"
+      ],
+      "parents": [
+        "zhou-zhennan",
+        "zhou-yuyan"
+      ],
+      "refs": [],
+      "gender": "F"
+    },
+    {
+      "id": "wu-guoxian",
+      "name": "吳國憲",
+      "note": "黃紅娟的先生",
+      "spouse": [
+        "huang-hongjuan"
+      ],
+      "parents": [],
+      "refs": [],
+      "gender": "M"
+    },
+    {
+      "id": "wu-yizhen",
+      "name": "吳依真",
+      "note": "黃紅娟與吳國憲的女兒",
+      "spouse": [],
+      "parents": [
+        "huang-hongjuan",
+        "wu-guoxian"
+      ],
+      "refs": [],
+      "gender": "F"
+    },
+    {
+      "id": "zhou-hongduan",
+      "name": "周紅緞",
+      "note": "周振南與周玉燕的女兒",
+      "spouse": [
+        "ye-maolin"
+      ],
+      "parents": [
+        "zhou-zhennan",
+        "zhou-yuyan"
+      ],
+      "refs": [],
+      "gender": "F"
+    },
+    {
+      "id": "ye-maolin",
+      "name": "葉茂霖",
+      "note": "周紅緞的先生",
+      "spouse": [
+        "zhou-hongduan"
+      ],
+      "parents": [],
+      "refs": [],
+      "gender": "M"
+    },
+    {
+      "id": "zhou-shunran",
+      "name": "周順然",
+      "note": "周振南與周玉燕的兒子",
+      "spouse": [
+        "luo-huiyu"
+      ],
+      "parents": [
+        "zhou-zhennan",
+        "zhou-yuyan"
+      ],
+      "refs": [],
+      "gender": "M"
+    },
+    {
+      "id": "luo-huiyu",
+      "name": "羅惠玉",
+      "note": "周順然的太太",
+      "spouse": [
+        "zhou-shunran"
+      ],
+      "parents": [],
+      "refs": [],
+      "gender": "F"
+    },
+    {
+      "id": "zhou-xiaoyu",
+      "name": "周曉妤",
+      "note": "周順然與羅惠玉的女兒",
+      "spouse": [
+        "zhang-shengkun"
+      ],
+      "parents": [
+        "zhou-shunran",
+        "luo-huiyu"
+      ],
+      "refs": [],
+      "gender": "F"
+    },
+    {
+      "id": "zhang-shengkun",
+      "name": "張聖昆",
+      "note": "周曉妤的先生",
+      "spouse": [
+        "zhou-xiaoyu"
+      ],
+      "parents": [],
+      "refs": [],
+      "gender": "M"
+    },
+    {
+      "id": "zhang-wenxin",
+      "name": "張文馨",
+      "note": "周曉妤與張聖昆的女兒",
+      "spouse": [],
+      "parents": [
+        "zhou-xiaoyu",
+        "zhang-shengkun"
+      ],
+      "refs": [],
+      "gender": "F"
+    },
+    {
+      "id": "zhang-jiayu",
+      "name": "張家瑜",
+      "note": "周曉妤與張聖昆的女兒",
+      "spouse": [],
+      "parents": [
+        "zhou-xiaoyu",
+        "zhang-shengkun"
+      ],
+      "refs": [],
+      "gender": "F"
+    },
+    {
+      "id": "zhou-qiuyue",
+      "name": "周秋月",
+      "note": "周振南與周玉燕的女兒",
+      "spouse": [
+        "wang-xingwan"
+      ],
+      "parents": [
+        "zhou-zhennan",
+        "zhou-yuyan"
+      ],
+      "refs": [],
+      "gender": "F"
+    },
+    {
+      "id": "wang-xingwan",
+      "name": "王興萬",
+      "note": "周秋月的先生",
+      "spouse": [
+        "zhou-qiuyue"
+      ],
+      "parents": [],
+      "refs": [],
+      "gender": "M"
+    },
+    {
+      "id": "wang-peiqi",
+      "name": "王姵棋",
+      "note": "周秋月與王興萬的女兒",
+      "spouse": [],
+      "parents": [
+        "zhou-qiuyue",
+        "wang-xingwan"
+      ],
+      "refs": [],
+      "gender": "F"
+    },
+    {
+      "id": "wang-jingru",
+      "name": "王靚如",
+      "note": "周秋月與王興萬的女兒",
+      "spouse": [],
+      "parents": [
+        "zhou-qiuyue",
+        "wang-xingwan"
+      ],
+      "refs": [],
+      "gender": "F"
     }
   ]
 }

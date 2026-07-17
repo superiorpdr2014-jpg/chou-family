@@ -4,6 +4,8 @@ faces-of.jpg
 faces-*.jpg
 avatars.jpg
 annotated.jpg
+rot.jpg
+z*.jpg
 photos-source/
 .DS_Store
 Thumbs.db
