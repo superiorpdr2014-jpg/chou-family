@@ -109,6 +109,35 @@ function applyProposal(data, prop) {
     }
   }
 
+  // 解除婚姻關係：兩邊都要拿掉，不然樹上會一邊有一邊沒有
+  if (c.removeSpouse) {
+    const ex = people.find((p) => p.id === c.removeSpouse);
+    person.spouse = (person.spouse || []).filter((id) => id !== c.removeSpouse);
+    if (ex) {
+      ex.spouse = (ex.spouse || []).filter((id) => id !== person.id);
+      log.push(`${person.name} 與 ${ex.name} 解除婚姻關係`);
+    }
+  }
+
+  /*
+   * 移除整個人。要一併清乾淨所有指向他的關係，否則樹會壞掉：
+   *   - 別人的 spouse 還指著他 → 配偶不對稱
+   *   - 小孩的 parents 還指著他 → 找不到父母、整房變孤兒
+   * 小孩本身不刪（他們是真實存在的家人），只是父母欄位少掉這個人。
+   */
+  if (c.removePerson) {
+    const gone = person.name;
+    for (const p of people) {
+      if (p === person) continue;
+      if ((p.spouse || []).includes(person.id)) p.spouse = p.spouse.filter((id) => id !== person.id);
+      if ((p.parents || []).includes(person.id)) p.parents = p.parents.filter((id) => id !== person.id);
+    }
+    const i = people.indexOf(person);
+    people.splice(i, 1);
+    log.push(`把 ${gone} 從族譜移除`);
+    return log; // 人都沒了，後面不用再動他
+  }
+
   return log;
 }
 
@@ -179,9 +208,18 @@ export async function onRequestPost({ request, env }) {
     tree.push({ path: `proposals/${id}.json`, mode: '100644', type: 'blob', sha: null });
 
     const newTree = await gh(env, `/repos/${owner}/${repo}/git/trees`, 'POST', { base_tree: baseCommit.tree.sha, tree });
+    /*
+     * ⚠️ 絕對不要在核准的 commit 訊息裡放 [skip ci]。
+     * 我本來加它是為了不要觸發 GitHub Actions，但 Cloudflare Pages 也認這個標記，
+     * 結果是：族譜資料正確寫進 GitHub 了，網站卻永遠不會更新。
+     * Jay 改了三次名字都「沒有變」就是這個原因 —— 他每次都改對了，是網站沒重新部署。
+     *
+     * 而且本來就不需要擋：ingest workflow 只在 incoming/ 有變動時才跑，
+     * 核准只動 public/data 和 public/avatars，根本不會觸發它。
+     */
     const msg = action === 'approve'
-      ? `feat(族譜): 採用 ${prop.submittedBy} 的修正 — ${log.join('、') || prop.targetName} [skip ci]`
-      : `chore(族譜): 退回 ${prop.submittedBy} 對「${prop.targetName}」的修正 [skip ci]`;
+      ? `feat(族譜): 採用 ${prop.submittedBy} 的修正 — ${log.join('、') || prop.targetName}`
+      : `chore(族譜): 退回 ${prop.submittedBy} 對「${prop.targetName}」的修正`;
     const commit = await gh(env, `/repos/${owner}/${repo}/git/commits`, 'POST', {
       message: msg, tree: newTree.sha, parents: [baseSha],
     });

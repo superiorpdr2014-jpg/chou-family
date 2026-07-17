@@ -756,6 +756,24 @@ function renderEditForm(person) {
           <span>新增小孩（一行一個）</span>
           <textarea class="input" id="ed-kids" rows="3" placeholder="小孩的名字&#10;有多個就換行"></textarea>
         </label>
+        ${(person.spouse || []).length ? `
+        <label class="fld">
+          <span>解除婚姻關係</span>
+          <select class="input" id="ed-unspouse">
+            <option value="">不用動</option>
+            ${person.spouse.map((sid) => {
+              const s = S.people.find((x) => x.id === sid);
+              return s ? `<option value="${esc(sid)}">跟「${esc(s.name)}」解除（離婚／分開）</option>` : '';
+            }).join('')}
+          </select>
+        </label>` : ''}
+        <label class="fld">
+          <span>把這個人從族譜移除</span>
+          <select class="input" id="ed-remove">
+            <option value="">不用動</option>
+            <option value="1">移除「${esc(person.name)}」</option>
+          </select>
+        </label>
         <label class="fld">
           <span>你是誰？</span>
           <input class="input" id="ed-by" placeholder="你的名字" maxlength="20" value="${esc(localStorage.getItem('chou-name') || '')}">
@@ -781,13 +799,16 @@ async function submitEdit(person) {
   const name = $('#ed-name').value.trim();
   const spouse = $('#ed-spouse').value.trim();
   const kids = $('#ed-kids').value.split('\n').map((s) => s.trim()).filter(Boolean);
+  const unspouse = $('#ed-unspouse') ? $('#ed-unspouse').value : '';
+  const remove = $('#ed-remove').value;
   const by = $('#ed-by').value.trim();
   const pw = $('#ed-pw').value;
   const file = $('#ed-avatar').files[0];
 
   if (!pw) return toast('請輸入家族密碼');
   if (!by) return toast('請填你的名字，讓 Jay 知道是誰改的');
-  if (!name && !spouse && !kids.length && !file) return toast('沒有填任何要改的東西');
+  if (!name && !spouse && !kids.length && !file && !unspouse && !remove) return toast('沒有填任何要改的東西');
+  if (remove && !confirm(`確定要把「${person.name}」整個從族譜移除嗎？\n（要 Jay 核准才會真的移除）`)) return;
 
   localStorage.setItem('chou-pw', pw);
   localStorage.setItem('chou-name', by);
@@ -800,6 +821,8 @@ async function submitEdit(person) {
   if (name) fd.append('name', name);
   if (spouse) fd.append('addSpouse', spouse);
   if (kids.length) fd.append('addChildren', JSON.stringify(kids));
+  if (unspouse) fd.append('removeSpouse', unspouse);
+  if (remove) fd.append('removePerson', '1');
   if (file) fd.append('avatar', file, file.name);
 
   $('#ed-send').disabled = true;
@@ -867,6 +890,11 @@ async function loadProposals() {
       if (c.avatarImg) rows.push(`換大頭照`);
       if (c.addSpouse) rows.push(`新增配偶「<b>${esc(c.addSpouse)}</b>」`);
       if (c.addChildren) rows.push(`新增小孩「<b>${esc(c.addChildren.join('、'))}</b>」`);
+      if (c.removeSpouse) {
+        const ex = S.people.find((x) => x.id === c.removeSpouse);
+        rows.push(`⚠️ 解除跟「<b>${esc(ex ? ex.name : c.removeSpouse)}</b>」的婚姻關係`);
+      }
+      if (c.removePerson) rows.push(`🔴 <b>把這個人從族譜整個移除</b>`);
       return `
         <div class="panel" style="margin-bottom:1rem" data-id="${esc(p.id)}">
           <h3>${esc(p.targetName || p.target)}</h3>

@@ -92,6 +92,13 @@ export async function onRequestPost({ request, env }) {
       } catch { /* 格式壞掉就當沒填 */ }
     }
 
+    // 解除婚姻關係（離婚／分開）
+    const removeSpouse = String(form.get('removeSpouse') || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 60);
+    if (removeSpouse) changes.removeSpouse = removeSpouse;
+
+    // 整個人移除
+    if (form.get('removePerson')) changes.removePerson = true;
+
     // 提案編號：時間戳只是為了排序好看，隨機碼才是避免撞號的關鍵
     const rand = Math.random().toString(36).slice(2, 8);
     const id = `${Date.now()}-${rand}`;
@@ -136,7 +143,11 @@ export async function onRequestPost({ request, env }) {
     }
     const newTree = await gh(env, `/repos/${owner}/${repo}/git/trees`, 'POST', { base_tree: baseCommit.tree.sha, tree });
     const commit = await gh(env, `/repos/${owner}/${repo}/git/commits`, 'POST', {
-      // [skip ci]：提案只是躺在 proposals/，不需要觸發建置
+      /*
+       * 這裡的 [skip ci] 是對的：提案只是躺在 proposals/，網站內容沒變，不用重新部署。
+       * ⚠️ 但核准那支(review.js)絕對不能放 —— Cloudflare Pages 也認這個標記，
+       *    放了就會「資料寫進去了、網站卻不更新」。踩過一次了。
+       */
       message: `proposal: ${submittedBy} 提議修正「${proposal.targetName || target}」 [skip ci]`,
       tree: newTree.sha,
       parents: [baseSha],
