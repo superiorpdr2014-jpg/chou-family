@@ -53,8 +53,24 @@ const IMAGE_EXT = /\.(jpe?g|png|webp|heic)$/i;
 const log = (...a) => console.log(...a);
 const ensureDir = (d) => fs.mkdirSync(d, { recursive: true });
 
-/** 從資料夾名解析日期與標題，例如 "20190929二房辦聚會" → 2019-09-29 + "二房辦聚會" */
+/**
+ * 從資料夾名解析日期與標題
+ *   "20190929二房辦聚會"           → 2019-09-29 + 二房辦聚會
+ *   "2016.04.17.周氏家族母親節聚餐"  → 2016-04-17 + 周氏家族母親節聚餐
+ *   "20131012-周家二當家壽宴"       → 2013-10-12 + 周家二當家壽宴
+ */
 function parseAlbumName(name) {
+  // 先處理用點/斜線/橫線分隔的日期（2016.04.17.xxx），不然 "2016" 後面那串會被當成標題
+  const dotted = name.match(/^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})[.\-/\s]*(.*)$/);
+  if (dotted) {
+    const [, y, mo, d, rest] = dotted;
+    if (+mo >= 1 && +mo <= 12 && +d >= 1 && +d <= 31) {
+      const id = y + String(+mo).padStart(2, '0') + String(+d).padStart(2, '0');
+      const date = `${y}-${String(+mo).padStart(2, '0')}-${String(+d).padStart(2, '0')}`;
+      return { id, date, title: rest.trim() || null, year: +y };
+    }
+  }
+
   const m = name.match(/^(\d+)\s*(.*)$/);
   if (!m) return { id: slug(name), date: null, title: name };
   const digits = m[1];
