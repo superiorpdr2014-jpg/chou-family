@@ -52,6 +52,24 @@ const LABELS = {
   // 二房辦聚會 _29：周銘斌一家（陳靜美 0.308 ✅、周月治 0.370、周銘斌 0.444 驗證位置）
   'zhou-yancheng': [1429],            // 周彥成：右2
   'zhou-yanting': [1427],             // 周彥廷：另一個兒子
+
+  // 2024 母親節 _6：Jay 口述「左起張家瑜、羅惠玉、周順然、周月嬌、周月惠」
+  // 周月嬌 0.438 位置吻合（跟 2019 大合照差 5 年），佐證這個左右順序可信
+  'zhang-jiayu': [92],                // 張家瑜：最左的小女孩
+  'luo-huiyu': [94],                  // 羅惠玉：戴眼鏡
+  'zhou-shunran': [95],               // 周順然：中間的老先生
+  'zhou-yuehui-b': [93],              // 周月惠：最右邊
+  // 周月嬌在這張只有 55px、信心 0.453（q=0，太糊），不拿來當參考臉 ——
+  // 她在大合照已經有一張夠好的，加一張糊的只會拉低比對品質
+
+  // 2024 母親節 _7：王姵棋跟兒子（只有兩個人，沒有歧義）
+  'wang-peiqi': [98],                 // 王姵棋：右邊
+  'wang-peiqi-son': [97],             // 她兒子：左邊（本名 Jay 還不知道）
+
+  // 2024 母親節 _12（張文馨與張家瑜）目前不標 ——
+  // 左邊那個女孩戴墨鏡，眼睛被遮住特徵值就毀了；拿張家瑜已知的臉去比，
+  // 左 0.478 / 右 0.501 兩邊都不及格且差距只有 0.023（雜訊等級），
+  // 分不出誰是誰。硬標會把姊妹搞混，等 Jay 確認再說。
 };
 
 const MATCH_THRESHOLD = 0.40; // 跟前端一致
@@ -113,12 +131,21 @@ for (const person of people.people) {
   }
   cands.sort((a, b) => b.score - a.score);
 
-  // 人工指認的那幾張，一定是本人，拿來當保底
+  // 人工指認的那幾張，一定是本人
   const fallback = idxs
     .map((i) => ({ i, f: faces.faces[i], d: 0, score: avatarScore(faces.faces[i]) }))
     .sort((a, b) => b.score - a.score)[0];
 
-  const best = cands[0] && cands[0].score > fallback.score ? cands[0] : fallback;
+  /*
+   * 機器找到的要「明顯」比人工指認的好，才准取代（好 15% 以上）。
+   * 人工指認的臉 100% 是本人，機器找的永遠有認錯的風險 ——
+   * 只為了臉大一點就冒認錯人的險，不划算。
+   *
+   * 實例：王姵棋的兒子（2024 年 11 歲）本來被挑到一張 2016 年 277px 的幼童照，
+   * 只因為臉大就贏過人工指認那張 140px/信心0.997 的。小孩 3 歲跟 11 歲的臉
+   * 差太多，跨年份比對根本不可信，那張很可能根本是別的小孩。
+   */
+  const best = cands[0] && cands[0].score > fallback.score * 1.15 ? cands[0] : fallback;
   const photo = faces.photos[best.f.p];
   person.avatar = { p: photo.w, b: best.f.b };
   console.log(
