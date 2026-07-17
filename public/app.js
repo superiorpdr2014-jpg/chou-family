@@ -137,6 +137,33 @@ async function loadData() {
   const totalFaces = faces.count;
   $('#footer-stats').textContent =
     `${albums.albums.length} 本相簿 · ${faces.photos.length} 張照片 · 辨識出 ${totalFaces} 張人臉`;
+
+  refreshPeopleInBackground();
+}
+
+/*
+ * 靜態的 people.json 要等 Cloudflare 重新部署（2~4 分）才會更新，
+ * 但 Jay 核准修正後希望馬上看得到。所以：
+ *   靜態檔先畫（快，走 CDN）→ 背景跟 GitHub 要最新的 → 真的有變才重畫。
+ * 這樣畫面不會因為多這一次請求而變慢，但幾秒內就會跟上最新資料。
+ * /api/people 掛了就當作沒事發生，繼續用靜態檔 —— 族譜不能因此消失。
+ */
+async function refreshPeopleInBackground() {
+  try {
+    const res = await fetch('/api/people', { cache: 'no-store' });
+    if (!res.ok) return;
+    const fresh = await res.json();
+    if (!fresh.people || !fresh.people.length) return;
+
+    const same = JSON.stringify(fresh.people.map((p) => [p.id, p.name, p.spouse, p.parents, p.avatar]))
+      === JSON.stringify(S.people.map((p) => [p.id, p.name, p.spouse, p.parents, p.avatar]));
+    if (same) return;
+
+    S.people = fresh.people;
+    // 只有正在看族譜/人物頁時才需要重畫，其他頁重畫會打斷使用者
+    const page = location.hash.replace(/^#\/?/, '').split('/')[0];
+    if (page === 'people' || page === 'tree' || page === 'person') route();
+  } catch { /* 網路或 GitHub 出問題就算了，靜態檔還在 */ }
 }
 
 /** 人臉模型很大（約 12MB），只有真的要辨識時才載 */
@@ -924,7 +951,9 @@ async function loadProposals() {
         });
         const out = await res.json();
         if (!res.ok) throw new Error(out.error || '失敗');
-        panel.innerHTML = `<p class="muted">${action === 'approve' ? '✅ 已採用：' + (out.log || []).join('、') : '已退回'}（重新整理後族譜就會更新）</p>`;
+        panel.innerHTML = `<p class="muted">${action === 'approve' ? '✅ 已採用：' + (out.log || []).join('、') : '已退回'}</p>`;
+        // 立刻把新資料抓進來，這樣點回族譜就是最新的，不用等部署
+        if (action === 'approve') setTimeout(refreshPeopleInBackground, 1500);
       } catch (err) {
         btn.disabled = false;
         toast(err.message, 5000);
