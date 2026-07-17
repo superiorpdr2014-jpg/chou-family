@@ -4273,7 +4273,7 @@
       "gender": "M",
       "note": "周振南與周粉的兒子（Jay 的小舅舅）",
       "spouse": [
-        "zhou-mingyang-wife"
+        "wang-meizhi"
       ],
       "parents": [
         "zhou-zhenyuan",
@@ -10172,7 +10172,7 @@
       "spouse": [],
       "parents": [
         "zhou-mingyang",
-        "zhou-mingyang-wife"
+        "wang-meizhi"
       ],
       "refs": [
         {
@@ -10333,7 +10333,7 @@
       "spouse": [],
       "parents": [
         "zhou-mingyang",
-        "zhou-mingyang-wife"
+        "wang-meizhi"
       ],
       "refs": [
         {
@@ -10633,7 +10633,7 @@
       "spouse": [],
       "parents": [
         "zhou-mingyang",
-        "zhou-mingyang-wife"
+        "wang-meizhi"
       ],
       "refs": [
         {
@@ -12826,10 +12826,10 @@
       }
     },
     {
-      "id": "zhou-mingyang-wife",
-      "name": "周銘陽的老婆",
+      "id": "wang-meizhi",
+      "name": "王美智",
       "gender": "F",
-      "note": "本名待補",
+      "note": "周銘陽的太太",
       "spouse": [
         "zhou-mingyang"
       ],
