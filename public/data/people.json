@@ -13304,28 +13304,6 @@
           0.10001
         ]
       }
-    },
-    {
-      "id": "p-1784293220772-1",
-      "name": "���եνЧR��",
-      "note": "周月足的小孩",
-      "spouse": [],
-      "parents": [
-        "zhou-yuezu",
-        "ma-shunjin"
-      ],
-      "refs": []
-    },
-    {
-      "id": "p-1784293363543-1",
-      "name": "中文編碼測試ABC",
-      "note": "周月足的小孩",
-      "spouse": [],
-      "parents": [
-        "zhou-yuezu",
-        "ma-shunjin"
-      ],
-      "refs": []
     }
   ]
 }
