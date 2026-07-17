@@ -684,14 +684,21 @@ function renderTree() {
 
   hydrateAvatars();
 
-  view().addEventListener('click', (e) => {
+  /*
+   * ⚠️ 這裡一定要用 onclick 指派，不能用 addEventListener。
+   * renderTree() 每次重畫只換 view() 的 innerHTML，view() 本身不會被換掉，
+   * 所以 addEventListener 會一直往上疊：點第二次時有兩個 listener，
+   * 各切換一次狀態 → 一加一減等於沒動，展開鈕就死了（實測第 1 次有效、第 2 次起失效）。
+   * onclick 是指派，重畫時會覆蓋掉舊的，永遠只有一個。
+   */
+  view().onclick = (e) => {
     const t = e.target.closest('.tp-toggle');
     if (!t) return;
     e.preventDefault();
     const id = t.dataset.id;
     if (S.treeOpen.has(id)) S.treeOpen.delete(id); else S.treeOpen.add(id);
     renderTree();
-  });
+  };
 
   $('#tree-all').addEventListener('click', () => {
     if (allOpen) {
