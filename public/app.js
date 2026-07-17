@@ -61,9 +61,6 @@ const S = {
   strictness: 'normal',
   // 燈箱用
   lb: { list: [], idx: 0, showFaces: false },
-  // 族譜展開狀態（存的是每一房「主人」的 id）
-  treeOpen: new Set(),
-  treeInit: false,
   // 管理模式草稿
   draft: loadDraft(),
 };
@@ -556,20 +553,6 @@ function personCardHtml(p) {
     </a>`;
 }
 
-/** 這一房總共幾個人（含配偶、含所有後代）— 收合起來時讓人知道底下藏了多少 */
-function countBelow(person, ctx, seen = new Set()) {
-  if (seen.has(person.id)) return 0;
-  seen.add(person.id);
-  let n = 1;
-  for (const sid of person.spouse || []) {
-    if (ctx.byId.has(sid) && !seen.has(sid)) { seen.add(sid); n++; }
-  }
-  const key = [person.id, ...(person.spouse || []).filter((s) => ctx.byId.has(s))].sort().join('+');
-  const kids = ctx.childrenOf.get(key) || ctx.childrenOf.get(person.id) || [];
-  for (const k of kids) n += countBelow(k, ctx, seen);
-  return n;
-}
-
 /**
  * 大頭照，優先序：
  *   1. 家人自己上傳的獨立照片 {img}
@@ -601,37 +584,13 @@ function familyNodeHtml(person, ctx, seen) {
   // 那條線只有 2px 寬肉眼看不到，夫妻看起來就跟兄弟姊妹一模一樣
   const coupleHtml = members.map(personCardHtml).join('');
 
-  let below = '';
-  if (kids.length) {
-    const open = S.treeOpen.has(person.id);
-    if (open) {
-      below = `
-        <button class="tp-toggle open" data-id="${person.id}" title="收起這一房">−</button>
-        <div class="branch">
-          ${kids.map((k) => `<div class="child">${familyNodeHtml(k, ctx, seen)}</div>`).join('')}
-        </div>`;
-    } else {
-      // 收合：把底下的人數標出來，不然沒人知道還有東西可以點
-      const n = kids.reduce((s, k) => s + countBelow(k, ctx), 0);
-      below = `<button class="tp-toggle" data-id="${person.id}" title="展開這一房">+${n}</button>`;
-      // 收合的那房不算 seen，讓他們之後展開時還畫得出來
-      const mark = new Set(seen);
-      kids.forEach((k) => unsee(k, ctx, seen, mark));
-    }
-  }
+  // 全部直接攤開，不做展開/收合 —— Jay：手機跟電腦都要一次看到全部
+  const below = kids.length ? `
+    <div class="branch">
+      ${kids.map((k) => `<div class="child">${familyNodeHtml(k, ctx, seen)}</div>`).join('')}
+    </div>` : '';
 
   return `<div class="node"><div class="couple">${coupleHtml}</div>${below}</div>`;
-}
-
-/** 收合時把整房從 seen 移除，否則他們會被誤判成「還沒接上族譜」跑到下面去 */
-function unsee(person, ctx, seen, guard) {
-  if (!person || guard.has('u:' + person.id)) return;
-  guard.add('u:' + person.id);
-  seen.add(person.id);
-  for (const sid of person.spouse || []) if (ctx.byId.has(sid)) seen.add(sid);
-  const key = [person.id, ...(person.spouse || []).filter((s) => ctx.byId.has(s))].sort().join('+');
-  const kids = ctx.childrenOf.get(key) || ctx.childrenOf.get(person.id) || [];
-  kids.forEach((k) => unsee(k, ctx, seen, guard));
 }
 
 function renderTree() {
@@ -651,76 +610,33 @@ function renderTree() {
     !(p.spouse || []).some((sid) => ((ctx.byId.get(sid) || {}).parents || []).length)
   );
 
-  // 第一次進來：只展開最上面那對，下面各房收起來。
-  // 周家光是兄弟姊妹就 9 個，全部攤開會寬到 2600px，一打開只看得到一角。
-  if (!S.treeInit) {
-    S.treeInit = true;
-    roots.forEach((r) => S.treeOpen.add(r.id));
-  }
-
   const seen = new Set();
   const trees = roots.map((r) => familyNodeHtml(r, ctx, seen)).filter(Boolean);
 
-  // 有登記名字但接不上樹的人（還沒填關係），另外列出來，不要讓他們消失
+  // 有登記名字但接不上的人（還沒填關係），另外列出來，不要讓他們消失
   const orphans = S.people.filter((p) => !seen.has(p.id));
-  const allOpen = S.people.every((p) => S.treeOpen.has(p.id) || !hasKids(p, ctx));
 
   view().innerHTML = `
     <div class="wrap">
-      <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; flex-wrap:wrap">
-        <div>
-          <h2>族譜</h2>
-          <p>${S.people.length} 位家人 · 點人看照片，點 <b>＋</b> 展開那一房</p>
-        </div>
-        <button class="btn btn-ghost btn-sm" id="tree-all">${allOpen ? '全部收合' : '全部展開'}</button>
+      <div class="section-head">
+        <h2>家族成員</h2>
+        <p>${S.people.length} 位家人 · 點任何一個人看他的照片</p>
       </div>
       <div class="tree-scroll">
         <div class="tree">${trees.join('')}</div>
       </div>
       ${orphans.length ? `
         <div class="section-head" style="margin-top:3rem">
-          <h2 style="font-size:1.1rem">還沒接上族譜</h2>
+          <h2 style="font-size:1.1rem">還沒接上關係</h2>
           <p>這些家人還沒填上一代/下一代的關係</p>
         </div>
         <div class="tree"><div class="couple">${orphans.map(personCardHtml).join('')}</div></div>` : ''}
       <p class="muted" style="margin-top:2.5rem; font-size:.85rem">
-        族譜還不完整？<a href="#/upload">上傳照片</a>時可以順便登記自己和家人的關係。
+        資料有錯或缺人？點進那個人的頁面就可以修正。
       </p>
     </div>`;
 
   hydrateAvatars();
-
-  /*
-   * ⚠️ 這裡一定要用 onclick 指派，不能用 addEventListener。
-   * renderTree() 每次重畫只換 view() 的 innerHTML，view() 本身不會被換掉，
-   * 所以 addEventListener 會一直往上疊：點第二次時有兩個 listener，
-   * 各切換一次狀態 → 一加一減等於沒動，展開鈕就死了（實測第 1 次有效、第 2 次起失效）。
-   * onclick 是指派，重畫時會覆蓋掉舊的，永遠只有一個。
-   */
-  view().onclick = (e) => {
-    const t = e.target.closest('.tp-toggle');
-    if (!t) return;
-    e.preventDefault();
-    const id = t.dataset.id;
-    if (S.treeOpen.has(id)) S.treeOpen.delete(id); else S.treeOpen.add(id);
-    renderTree();
-  };
-
-  $('#tree-all').addEventListener('click', () => {
-    if (allOpen) {
-      S.treeOpen.clear();
-      roots.forEach((r) => S.treeOpen.add(r.id)); // 最上面那對留著，不然整棵樹不見
-    } else {
-      S.people.forEach((p) => S.treeOpen.add(p.id));
-    }
-    renderTree();
-  });
-
-}
-
-function hasKids(p, ctx) {
-  const key = [p.id, ...(p.spouse || []).filter((s) => ctx.byId.has(s))].sort().join('+');
-  return !!(ctx.childrenOf.get(key) || ctx.childrenOf.get(p.id) || []).length;
 }
 
 /** 頭像是從照片裡把臉裁出來的，等畫面畫好再補上 */
