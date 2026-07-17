@@ -1,0 +1,48 @@
+name: 收進家人上傳的照片
+
+# 家人在網站上傳 → Cloudflare 把照片 commit 進 incoming/ → 這個流程自動跑人臉辨識
+# → 把結果 commit 回去 → Cloudflare 自動部署。全程不用人工介入。
+on:
+  push:
+    paths:
+      - 'incoming/**'
+  workflow_dispatch: # 也可以手動觸發
+
+permissions:
+  contents: write
+
+# 同時上傳多次時排隊跑，不要打架
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安裝套件
+        run: npm ci
+
+      - name: 建置（壓圖 + 人臉辨識）
+        run: node scripts/build.js
+
+      - name: 把結果推回去
+        run: |
+          git config user.name "周氏相簿機器人"
+          git config user.email "actions@github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "沒有變更，不用 commit"
+            exit 0
+          fi
+          # [skip ci] 很重要：這個 commit 會動到 incoming/（清空它），
+          # 沒擋的話會再觸發自己，變成無限迴圈
+          git commit -m "chore: 收進新上傳的照片並重建辨識資料 [skip ci]"
+          git push
