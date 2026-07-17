@@ -3165,7 +3165,9 @@
       "name": "周美珠",
       "gender": "F",
       "note": "周振南與周粉的女兒（六阿姨）",
-      "spouse": [],
+      "spouse": [
+        "wu-zhenqi"
+      ],
       "parents": [
         "zhou-zhennan",
         "zhou-fen"
@@ -3809,8 +3811,10 @@
       "id": "wu-zhenqi",
       "name": "巫禎麒",
       "gender": "M",
-      "note": "待確認是哪一位阿姨的先生",
-      "spouse": [],
+      "note": "周美珠的先生",
+      "spouse": [
+        "zhou-meizhu"
+      ],
       "parents": [],
       "refs": [
         {
