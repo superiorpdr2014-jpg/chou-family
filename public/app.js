@@ -261,7 +261,6 @@ function loadImage(src) {
 
 function renderHome() {
   const albums = S.albums.albums;
-  const cover = 'photos/2024427/w/0014.webp';
   const totalPhotos = S.faces.photos.length;
 
   // 最近的聚會（2025 年起），每本挑人臉最多的那張＝大合照
@@ -275,18 +274,25 @@ function renderHome() {
     .filter(Boolean);
 
   view().innerHTML = `
-    <section class="hero">
-      <img class="hero-img" src="${cover}" alt="周氏大家族合照">
-      <div class="hero-shade"></div>
-      <div class="hero-inner">
+    <section class="home-banner">
+      <img src="home-banner.jpg" alt="周氏大家族大合照">
+      <div class="home-banner-cap">
         <h1>周氏大家族的點點滴滴</h1>
-        <p>${albums.length} 本相簿、${totalPhotos} 張照片，記錄我們一起走過的日子。<br>上傳一張自己的照片，就能找出每個時期有你的合影。</p>
+        <p>${albums.length} 本相簿、${totalPhotos} 張照片，記錄我們一起走過的日子。</p>
         <div class="hero-actions">
-          <a class="hero-cta" href="#/people">尋找家人照片 →</a>
-          <a class="hero-cta hero-cta-ghost" href="#/find">找出我的照片 →</a>
+          <a class="hero-cta hero-cta-solid" href="#/people">尋找家人照片 →</a>
         </div>
       </div>
     </section>
+
+    <div class="wrap" style="padding-top:0">
+      <section class="findme">
+        <div class="findme-emoji">🔍</div>
+        <h2>找出自己的照片</h2>
+        <p>上傳一張自己的照片，系統會自動比對每一本相簿，<br>找出每個時期、每場聚會裡有你的合影。</p>
+        <a class="hero-cta hero-cta-solid" href="#/find">找出我的照片 →</a>
+      </section>
+    </div>
 
     ${recent.length ? `
     <div class="wrap" style="padding-bottom:0">
