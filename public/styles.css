@@ -215,6 +215,21 @@ a { color: inherit; }
 }
 .hero-cta-solid:hover { background: var(--accent-dark); }
 
+/* ---------- 首頁：即將到來的家族聚會 ---------- */
+.upcoming { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); }
+.upcoming-card {
+  display: block; text-decoration: none;
+  background: linear-gradient(180deg, #fffaf6, var(--paper-2));
+  border: 1px solid var(--accent); border-left-width: 4px;
+  border-radius: var(--radius); padding: 1rem 1.15rem;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.upcoming-card:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(43,35,32,.12); }
+.up-when { font-size: .82rem; color: var(--accent-dark); font-weight: 500; }
+.up-title { font-family: var(--serif); font-weight: 700; font-size: 1.2rem; color: var(--ink); margin: .25rem 0; }
+.up-where { font-size: .9rem; color: var(--ink-soft); }
+.up-rsvp { font-size: .82rem; color: var(--ink-faint); margin-top: .5rem; }
+
 /* ---------- 找出自己的照片：獨立功能區塊 ---------- */
 .findme {
   text-align: center;

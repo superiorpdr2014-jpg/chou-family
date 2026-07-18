@@ -149,10 +149,14 @@ async function loadData() {
 
   for (const a of albums.albums) for (const p of a.photos) S.photoAlbum[p.i] = a;
 
-  // 互動資料（愛心/留言）——失敗就當空的，不影響看照片
+  // 互動資料（愛心/留言）＋聚會——失敗就當空的，不影響看照片
   try {
     const ir = await fetch('/api/interactions', { cache: 'no-cache' });
     if (ir.ok) S.interactions = await ir.json();
+  } catch { /* 沒關係 */ }
+  try {
+    const er = await fetch('/api/events', { cache: 'no-cache' });
+    if (er.ok) S.events = (await er.json()).events || [];
   } catch { /* 沒關係 */ }
 
   const totalFaces = faces.count;
@@ -291,6 +295,14 @@ function renderHome() {
     })
     .filter(Boolean);
 
+  // 即將到來的聚會（沒填日期的也算「待定」照樣公佈），最近的排前面
+  const t = new Date();
+  const todayStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  const upcoming = (S.events || [])
+    .filter((e) => !e.when || String(e.when).slice(0, 10) >= todayStr)
+    .sort((a, b) => String(a.when || '9999').localeCompare(String(b.when || '9999')))
+    .slice(0, 4);
+
   view().innerHTML = `
     <section class="home-banner">
       <img src="home-banner.jpg" alt="周氏大家族大合照">
@@ -311,6 +323,28 @@ function renderHome() {
         <a class="hero-cta hero-cta-solid" href="#/find">找出我的照片 →</a>
       </section>
     </div>
+
+    ${upcoming.length ? `
+    <div class="wrap" style="padding-top:0; padding-bottom:0">
+      <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; flex-wrap:wrap">
+        <div>
+          <h2>📣 即將到來的家族聚會</h2>
+          <p>點進去回覆你會不會到</p>
+        </div>
+        <a class="btn btn-ghost btn-sm" href="#/board">看全部聚會 →</a>
+      </div>
+      <div class="upcoming">
+        ${upcoming.map((ev) => {
+          const yes = Object.values(ev.rsvps || {}).filter((s) => s === 'yes').length;
+          return `<a class="upcoming-card" href="#/board">
+            <div class="up-when">🗓️ ${esc(fmtEventWhen(ev.when) || '時間待定')}</div>
+            <div class="up-title">${esc(ev.title)}</div>
+            ${ev.where ? `<div class="up-where">📍 ${esc(ev.where)}</div>` : ''}
+            <div class="up-rsvp">${yes ? `已有 ${yes} 位會到` : '還沒有人回覆'} · 點我回覆 →</div>
+          </a>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
 
     ${recent.length ? `
     <div class="wrap" style="padding-bottom:0">
