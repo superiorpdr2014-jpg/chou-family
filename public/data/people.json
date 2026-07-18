@@ -42,7 +42,7 @@
       "id": "zhou-fen",
       "name": "周粉",
       "gender": "F",
-      "note": "周振南的太太",
+      "note": "周振源的太太",
       "spouse": [
         "zhou-zhenyuan"
       ],
@@ -619,7 +619,7 @@
       "id": "zhou-yuechun",
       "name": "周月春",
       "gender": "F",
-      "note": "周振南與周粉的女兒",
+      "note": "周振源與周粉的女兒",
       "spouse": [
         "huang-zhaorui"
       ],
@@ -1824,7 +1824,7 @@
       "id": "zhou-yuezu",
       "name": "周月足",
       "gender": "F",
-      "note": "周振南與周粉的女兒",
+      "note": "周振源與周粉的女兒",
       "spouse": [
         "ma-shunjin"
       ],
@@ -3811,7 +3811,7 @@
       "id": "zhou-yuejiao",
       "name": "周月嬌",
       "gender": "F",
-      "note": "周振南與周粉的女兒",
+      "note": "周振源與周粉的女兒",
       "spouse": [],
       "parents": [
         "zhou-zhenyuan",
@@ -4111,7 +4111,7 @@
       "id": "zhou-yuemei",
       "name": "周月梅",
       "gender": "F",
-      "note": "周振南與周粉的女兒",
+      "note": "周振源與周粉的女兒",
       "spouse": [
         "zhou-yuemei-husband"
       ],
@@ -4413,7 +4413,7 @@
       "id": "zhou-yuezhi",
       "name": "周月治",
       "gender": "F",
-      "note": "周振南與周粉的女兒",
+      "note": "周振源與周粉的女兒",
       "spouse": [
         "p-1784375974791-1"
       ],
@@ -4854,7 +4854,7 @@
       "id": "zhou-yuehui",
       "name": "周月慧",
       "gender": "F",
-      "note": "周振南與周粉的女兒",
+      "note": "周振源與周粉的女兒",
       "spouse": [
         "wang-yongming"
       ],
@@ -5177,7 +5177,7 @@
       "id": "zhou-meizhu",
       "name": "周美珠",
       "gender": "F",
-      "note": "周振南與周粉的女兒",
+      "note": "周振源與周粉的女兒",
       "spouse": [
         "wu-zhenqi"
       ],
@@ -5896,7 +5896,7 @@
       "id": "zhou-mingbin",
       "name": "周銘斌",
       "gender": "M",
-      "note": "周振南與周粉的兒子",
+      "note": "周振源與周粉的兒子",
       "spouse": [
         "chen-jingmei"
       ],
@@ -6636,7 +6636,7 @@
       "id": "zhou-mingyang",
       "name": "周銘陽",
       "gender": "M",
-      "note": "周振南與周粉的兒子",
+      "note": "周振源與周粉的兒子",
       "spouse": [
         "wang-meizhi"
       ],
