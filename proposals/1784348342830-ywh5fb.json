@@ -1,0 +1,10 @@
+{
+  "id": "1784348342830-ywh5fb",
+  "target": "album-20991231",
+  "targetName": "刪除整本相簿",
+  "submittedBy": "自動測試",
+  "submittedAt": "2026-07-18 04:19",
+  "changes": {
+    "deleteAlbum": "20991231"
+  }
+}
