@@ -85,7 +85,7 @@ export async function onRequestPost({ request, env }) {
 
     if (!safeEqual(pw, env.FAMILY_PASSWORD)) return json({ error: '家族密碼不對' }, 401);
     if (!name) return json({ error: '請輸入你的名字' }, 400);
-    if (!relative) return json({ error: '請輸入爸爸或媽媽的名字' }, 400);
+    if (!relative) return json({ error: '請在第二格填一位家人的名字（父母／另一半／小孩皆可）' }, 400);
 
     const data = await loadPeople(env);
     const people = data.people || [];
@@ -104,7 +104,7 @@ export async function onRequestPost({ request, env }) {
 
     // 族譜上有登記近親才驗；完全沒有近親可比對的（極少數）就放行，密碼＋名字已經是門檻
     if (relatives.length && !relatives.includes(relative)) {
-      return json({ error: '爸媽（或家人）的名字對不上，沒辦法確認你是家人。' }, 403);
+      return json({ error: '第二格的名字對不上。若你是嫁進／娶進周家的，這裡要填你的另一半或小孩的名字（不是你自己的爸媽）。' }, 403);
     }
 
     // 發 session cookie
