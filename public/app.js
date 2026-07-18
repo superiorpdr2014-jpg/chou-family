@@ -303,10 +303,13 @@ function renderAlbum(id) {
   view().innerHTML = `
     <div class="wrap">
       <a class="back-link" href="#/">← 回到相簿</a>
-      <div class="section-head">
-        <div class="album-date">${fmtDate(a.date)}</div>
-        <h2>${esc(a.title)}</h2>
-        <p>${a.count} 張照片</p>
+      <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; flex-wrap:wrap">
+        <div>
+          <div class="album-date">${fmtDate(a.date)}</div>
+          <h2>${esc(a.title)}</h2>
+          <p>${a.count} 張照片</p>
+        </div>
+        <a class="btn btn-sm" href="#/upload/${encodeURIComponent(a.id)}">＋ 加照片到這本</a>
       </div>
       <div class="grid" id="album-grid">
         ${a.photos.map((p, i) => `
@@ -707,7 +710,7 @@ function renderPerson(id) {
   const av = avatarOf(person);
   view().innerHTML = `
     <div class="wrap">
-      <a class="back-link" href="#/people">← 回到族譜</a>
+      <a class="back-link" href="#/people">← 回到家族成員</a>
       <div class="person-head">
         <span class="person-av" ${av ? `data-crop="${esc(JSON.stringify(av))}"` : ''}>${av ? '' : esc((person.name || '?').charAt(0))}</span>
         <div class="section-head" style="margin:0">
@@ -764,7 +767,7 @@ function renderEditForm(person) {
   box.innerHTML = `
     <div class="panel" style="margin-bottom:1.5rem">
       <h3>修正「${esc(person.name)}」的資料</h3>
-      <p class="hint">送出後會先進待審清單，Jay 看過才會更新到族譜上。<b>沒填的欄位不會動到。</b></p>
+      <p class="hint">送出後會先進待審清單，管理員看過才會更新到族譜上。<b>沒填的欄位不會動到。</b></p>
 
       <div class="edit-grid">
         <label class="fld">
@@ -833,9 +836,9 @@ async function submitEdit(person) {
   const file = $('#ed-avatar').files[0];
 
   if (!pw) return toast('請輸入家族密碼');
-  if (!by) return toast('請填你的名字，讓 Jay 知道是誰改的');
+  if (!by) return toast('請填你的名字，讓管理員知道是誰改的');
   if (!name && !spouse && !kids.length && !file && !unspouse && !remove) return toast('沒有填任何要改的東西');
-  if (remove && !confirm(`確定要把「${person.name}」整個從族譜移除嗎？\n（要 Jay 核准才會真的移除）`)) return;
+  if (remove && !confirm(`確定要把「${person.name}」整個從族譜移除嗎？\n（要管理員核准才會真的移除）`)) return;
 
   localStorage.setItem('chou-pw', pw);
   localStorage.setItem('chou-name', by);
@@ -861,7 +864,7 @@ async function submitEdit(person) {
     $('#edit-box').innerHTML = `
       <div class="panel" style="margin-bottom:1.5rem">
         <h3>收到了，謝謝你 🙏</h3>
-        <p class="hint">你的修正已經送出，Jay 看過確認後就會更新到族譜上。</p>
+        <p class="hint">你的修正已經送出，管理員看過確認後就會更新到族譜上。</p>
       </div>`;
   } catch (err) {
     $('#ed-send').disabled = false;
@@ -966,10 +969,12 @@ async function loadProposals() {
 
 /* ============ 畫面：上傳照片 ============ */
 
-function renderUpload() {
+function renderUpload(presetAlbumId) {
   const albums = S.albums.albums;
   const savedPw = localStorage.getItem('chou-pw') || '';
   const savedName = localStorage.getItem('chou-name') || '';
+  // 從某本相簿點「加照片到這本」進來的話，預選那本
+  const preset = presetAlbumId ? albums.find((a) => a.id === presetAlbumId) : null;
 
   view().innerHTML = `
     <div class="wrap">
@@ -990,7 +995,7 @@ function renderUpload() {
 
         <div class="panel">
           <h3>家族密碼</h3>
-          <p class="hint">跟 Jay 要。設密碼是因為網站是公開的，不擋的話陌生人也能往相簿丟東西。</p>
+          <p class="hint">跟管理員要。設密碼是因為網站是公開的，不擋的話陌生人也能往相簿丟東西。</p>
           <div class="field">
             <input class="input" id="up-pw" type="password" placeholder="家族密碼" value="${esc(savedPw)}">
           </div>
@@ -1001,7 +1006,7 @@ function renderUpload() {
           <div class="field" style="margin-bottom:.75rem">
             <select class="input" id="up-album">
               <option value="__new__">＋ 建立新相簿</option>
-              ${albums.map((a) => `<option value="${esc(a.dir)}">${fmtDate(a.date)} ${esc(a.title)}</option>`).join('')}
+              ${albums.map((a) => `<option value="${esc(a.dir)}" ${preset && preset.id === a.id ? 'selected' : ''}>${fmtDate(a.date)} ${esc(a.title)}</option>`).join('')}
             </select>
           </div>
           <div id="up-new">
@@ -1287,7 +1292,7 @@ function route() {
   if (!page) return renderHome();
   if (page === 'album' && arg) return renderAlbum(arg);
   if (page === 'find') return renderFind();
-  if (page === 'upload') return renderUpload();
+  if (page === 'upload') return renderUpload(arg ? decodeURIComponent(arg) : null);
   if (page === 'people' || page === 'tree') return renderTree();
   if (page === 'review') return renderReview();
   if (page === 'person' && arg) return renderPerson(decodeURIComponent(arg));
