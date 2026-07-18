@@ -281,7 +281,7 @@ function renderHome() {
       <div class="hero-inner">
         <h1>周氏大家族的點點滴滴</h1>
         <p>${albums.length} 本相簿、${totalPhotos} 張照片，記錄我們一起走過的日子。<br>上傳一張自己的照片，就能找出每個時期有你的合影。</p>
-        <a class="hero-cta" href="#/find">找出我的照片 →</a>
+        <a class="hero-cta" href="#/people">尋找家人照片 →</a>
       </div>
     </section>
 
