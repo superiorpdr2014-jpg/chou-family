@@ -88,7 +88,7 @@ function applyProposal(data, prop) {
   }
 
   if (c.avatarImg) {
-    const imgPath = c.avatarImg.replace(/^proposals\//, 'avatars/');
+    const imgPath = c.avatarImg.replace(/^proposals\/avatars\//, 'avatars/');
     person.avatar = { img: imgPath };
     log.push('換了大頭照');
     // 有抓到人臉特徵值 → 加進 refs，讓他能在相簿裡被自動認出來。
@@ -201,7 +201,7 @@ export async function onRequestPost({ request, env }) {
         const img = await gh(env, `/repos/${owner}/${repo}/contents/${encodeURIComponent(src)}?ref=${branch}`);
         if (img) {
           tree.push({
-            path: 'public/' + src.replace(/^proposals\//, 'avatars/'),
+            path: 'public/' + src.replace(/^proposals\/avatars\//, 'avatars/'),
             mode: '100644', type: 'blob',
             sha: (await gh(env, `/repos/${owner}/${repo}/git/blobs`, 'POST', { content: img.content, encoding: 'base64' })).sha,
           });

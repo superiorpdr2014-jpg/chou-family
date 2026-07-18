@@ -332,6 +332,28 @@ const bin = fs.readFileSync(path.join(DATA, 'faces.bin'));
 const desc = new Float32Array(bin.buffer, bin.byteOffset, bin.length / 4);
 const people = JSON.parse(fs.readFileSync(path.join(DATA, 'people.json'), 'utf8'));
 
+/*
+ * 🔴 硬防護：一旦 people.json 已經有標好的 refs，就不准再跑這支腳本。
+ *
+ * 為什麼：下面 LABELS 裡的 faceIdx 是「某一次建置的照片順序」下的索引。
+ * 只要跑過 `npm run build --rebuild`（照片重排），這些索引就全部指向錯的人，
+ * 再跑 label.js 會把每個人的臉/大頭照覆蓋成別人的 —— 整份資料一次毀掉。
+ *
+ * 這支腳本的任務（把人臉特徵值寫進 people.json）早就完成了。
+ * people.json 存的是特徵值本身，不依賴索引，那才是真相來源。
+ * 真的要重跑（例如新增一批標記），先確認 faceIdx 對得上目前的 faces.json，
+ * 再加 --force。血淋淋教訓：曾經在 rebuild 後手滑跑了一次，78 人的大頭照全變糊臉。
+ */
+const alreadyLabeled = people.people.filter((p) => (p.refs || []).some((r) => r.d)).length;
+if (alreadyLabeled > 0 && !process.argv.includes('--force')) {
+  console.error(`\n🔴 拒絕執行：people.json 已經有 ${alreadyLabeled} 個人標好人臉了。\n`);
+  console.error(`   這支腳本的 faceIdx 只在「當初那次建置」的照片順序下才正確，`);
+  console.error(`   跑過 --rebuild 之後就會指向錯的人，再跑會把大頭照全部弄壞。\n`);
+  console.error(`   people.json 存的是特徵值本身、不依賴索引，那才是真相來源。\n`);
+  console.error(`   真的確定 faceIdx 還對得上，才加 --force。\n`);
+  process.exit(1);
+}
+
 const at = (i) => desc.subarray(i * 128, i * 128 + 128);
 const dist = (a, b) => { let s = 0; for (let i = 0; i < 128; i++) { const d = a[i] - b[i]; s += d * d; } return Math.sqrt(s); };
 const round5 = (v) => +v.toFixed(5);
