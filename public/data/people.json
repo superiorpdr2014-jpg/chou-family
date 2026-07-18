@@ -4916,7 +4916,9 @@
       "id": "xu-ruiling",
       "name": "許瑞玲",
       "note": "周月治的女兒",
-      "spouse": [],
+      "spouse": [
+        "p-1784332845912-1"
+      ],
       "parents": [
         "zhou-yuezhi"
       ],
@@ -13173,6 +13175,16 @@
         "huang-yuren",
         "amber"
       ],
+      "refs": []
+    },
+    {
+      "id": "p-1784332845912-1",
+      "name": "周宗賢",
+      "note": "許瑞玲的配偶",
+      "spouse": [
+        "xu-ruiling"
+      ],
+      "parents": [],
       "refs": []
     }
   ]
