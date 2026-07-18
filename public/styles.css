@@ -661,6 +661,9 @@ body.locked .topbar, body.locked .footer, body.locked #view { display: none; }
   font-family: var(--sans);
 }
 .lb-btn:hover { background: rgba(255,255,255,.25); }
+.lb-btn-danger { background: rgba(200,60,50,.28); }
+.lb-btn-danger:hover { background: rgba(200,60,50,.55); }
+.lb-btn[hidden] { display: none; }
 
 /* ---------- 提示 ---------- */
 

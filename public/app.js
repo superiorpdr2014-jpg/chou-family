@@ -1438,6 +1438,44 @@ function closeLightbox() {
   document.body.style.overflow = '';
 }
 
+/** 管理員刪除當前這張照片 */
+async function deletePhoto(pi) {
+  const photo = S.faces.photos[pi];
+  if (!photo) return;
+  const albumId = photo.a;
+  const m = (photo.w || photo.t || '').match(/\/([^/]+)\.webp$/);
+  const name = m ? m[1] : null;
+  if (!name) return toast('無法辨識這張照片');
+  if (!confirm('確定要刪除這張照片嗎？刪了就找不回來了。')) return;
+  const pw = sessionStorage.getItem('chou-admin');
+  if (!pw) return toast('請先到「待審核」頁用管理員密碼登入');
+  const del = $('#lb-delete');
+  del.disabled = true; toast('刪除中…');
+  try {
+    const res = await fetch('/api/photo-delete', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password: pw, albumId, name }),
+    });
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error || '刪除失敗');
+    // 本機先拿掉，畫面馬上更新（正式檔重新部署後就一致了）
+    const album = S.albums.albums.find((a) => a.id === albumId);
+    if (album) {
+      album.photos = album.photos.filter((p) => p.name !== name);
+      album.count = album.photos.length;
+    }
+    closeLightbox();
+    toast('已刪除。人臉索引會在一兩分鐘後一起更新。', 4500);
+    const hash = location.hash || '';
+    if (hash.includes('/album/')) renderAlbum(albumId);
+    else if (hash.includes('/find') || hash.includes('/people')) { /* 這些頁不重畫，避免動到比對結果 */ }
+  } catch (err) {
+    toast(err.message, 5000);
+  } finally {
+    del.disabled = false;
+  }
+}
+
 function showPhoto() {
   const pi = S.lb.list[S.lb.idx];
   const photo = S.faces.photos[pi];
@@ -1452,6 +1490,12 @@ function showPhoto() {
   const dl = $('#lb-download');
   dl.href = photo.o || photo.w;
   dl.setAttribute('download', photo.src || 'photo.jpg');
+
+  // 刪除鈕只給管理員（審核頁登入過、sessionStorage 有管理員密碼）
+  const del = $('#lb-delete');
+  const isAdmin = !!sessionStorage.getItem('chou-admin');
+  del.hidden = !isAdmin;
+  del.onclick = isAdmin ? () => deletePhoto(pi) : null;
 
   $('#lb-faces').innerHTML = '';
   img.onload = () => drawFaceBoxes(pi);
