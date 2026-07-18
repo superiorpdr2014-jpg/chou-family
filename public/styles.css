@@ -193,7 +193,7 @@ a { color: inherit; }
 .home-banner > img {
   display: block; width: 100%;
   height: clamp(400px, 58vw, 1000px);
-  object-fit: cover; object-position: center 60%;
+  object-fit: cover; object-position: center 50%;
 }
 @media (max-width: 640px) {
   .home-banner > img { height: auto; object-fit: initial; }
