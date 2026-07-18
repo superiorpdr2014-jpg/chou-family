@@ -180,7 +180,7 @@ async function refreshPeopleInBackground() {
     const fresh = await res.json();
     if (!fresh.people || !fresh.people.length) return;
 
-    const key = (p) => [p.id, p.name, p.note, p.spouse, p.parents, p.avatar, p.born, (p.refs || []).length];
+    const key = (p) => [p.id, p.name, p.note, p.spouse, p.parents, p.avatar, p.born, (p.refs || []).length, (p.exclude || []).length];
     const same = JSON.stringify(fresh.people.map(key)) === JSON.stringify(S.people.map(key));
     if (same) return;
 
@@ -214,11 +214,19 @@ async function ensureModels(onProgress) {
  * @param {boolean} includeMaybe 要不要一起帶回「可能是你」的
  * @returns [{photo, dist, album, faceIdx, tier}] 依相似度排序
  */
-function matchPhotos(refs, threshold, includeMaybe = false) {
+/** 這張臉的穩定識別碼（照片＋框位置），用來排除「認錯」的臉 */
+function faceKey(faceIdx) {
+  const f = S.faces.faces[faceIdx];
+  const photo = S.faces.photos[f.p];
+  return `${photo.w}#${(+f.b[0]).toFixed(3)},${(+f.b[1]).toFixed(3)}`;
+}
+
+function matchPhotos(refs, threshold, includeMaybe = false, excludeSet = null) {
   const best = new Map(); // photoIdx → {margin, dist, faceIdx}
   for (let i = 0; i < S.faces.faces.length; i++) {
     const f = S.faces.faces[i];
     if (!f.q) continue; // 太小/太模糊的臉不參與比對
+    if (excludeSet && excludeSet.has(faceKey(i))) continue; // 被標記「不是本人」的臉跳過
 
     const d = descAt(i);
     let min = Infinity;
@@ -960,7 +968,8 @@ function renderPerson(id) {
 
   const ctx = buildFamily();
   const refs = (person.refs || []).map((r) => Float32Array.from(r.d));
-  let matches = refs.length ? matchPhotos(refs, STRICTNESS.normal.value) : [];
+  const exclude = new Set(person.exclude || []);
+  let matches = refs.length ? matchPhotos(refs, STRICTNESS.normal.value, false, exclude) : [];
   // 有填出生年就過濾掉出生前的照片（小baby/小孩很容易被誤配到出生前的合照）
   if (person.born) matches = matches.filter((m) => !m.album || !m.album.date || m.album.date.slice(0, 4) >= String(person.born));
   const groups = groupByAlbum(matches);
@@ -2230,9 +2239,11 @@ function whoIsPerson(faceIdx) {
   const f = S.faces.faces[faceIdx];
   if (!f.q) return null;
   const d = descAt(faceIdx);
+  const key = faceKey(faceIdx);
   const limit = STRICTNESS.strict.value - sizePenalty(f.px);
   let best = null, bestDist = limit;
   for (const p of S.people) {
+    if (p.exclude && p.exclude.includes(key)) continue; // 這張臉被標記過「不是這個人」
     for (const r of (p.refs || [])) {
       if (!r.d) continue;
       const dist = distance(Float32Array.from(r.d), d);
@@ -2254,10 +2265,39 @@ function openFaceMenu(faceIdx, person) {
     <h3>這是 ${esc(person.name)}？</h3>
     <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-top:1rem">
       <a class="btn" href="#/person/${encodeURIComponent(person.id)}" id="fs-view">看 ${esc(person.name)} 的資料與關係</a>
-      <button class="btn btn-ghost" id="fs-retag">認錯了，標記給別人</button>
+      <button class="btn btn-ghost" id="fs-retag">認錯了，改標給別人</button>
+      <button class="btn btn-ghost" id="fs-notperson" style="color:#b3402f">這不是 ${esc(person.name)}</button>
     </div>`);
   $('#fs-view').addEventListener('click', closeFaceSheet);
   $('#fs-retag').addEventListener('click', () => openFaceTag(faceIdx, person));
+  $('#fs-notperson').addEventListener('click', () => excludeFace(faceIdx, person));
+}
+
+/** 把這張臉標記成「不是這個人」，之後不再配到他（修正認錯） */
+async function excludeFace(faceIdx, person) {
+  const key = faceKey(faceIdx);
+  try {
+    const r = await fetch('/api/tag', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ excludeFrom: person.id, excludeKey: key }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || '失敗');
+    applyExcludeLocal(person, key);
+    closeFaceSheet();
+    toast(`已記住「這不是 ${person.name}」，之後不會再配到他 ✓`, 3500);
+    if (!$('#lightbox').hidden && S.lb.showFaces) drawFaceBoxes(S.lb.list[S.lb.idx]);
+    if ((location.hash || '').includes('/person/')) route();
+  } catch (err) { toast(err.message, 4000); }
+}
+
+/** 本機同步：把 key 加進某人的 exclude、並移除他身上這張臉的 ref */
+function applyExcludeLocal(person, key) {
+  person.exclude = person.exclude || [];
+  if (!person.exclude.includes(key)) person.exclude.push(key);
+  const [xp, xbox] = key.split('#');
+  const [xb0, xb1] = (xbox || '').split(',');
+  person.refs = (person.refs || []).filter((rf) => !(rf.p === xp && rf.b && (+rf.b[0]).toFixed(3) === xb0 && (+rf.b[1]).toFixed(3) === xb1));
 }
 
 /** 標記面板：把這張臉指定給某位家族成員 */
@@ -2269,8 +2309,10 @@ function suggestPerson(faceIdx) {
   const f = S.faces.faces[faceIdx];
   if (!f.q) return null;
   const d = descAt(faceIdx);
+  const key = faceKey(faceIdx);
   let best = null, bestDist = Infinity;
   for (const p of S.people) {
+    if (p.exclude && p.exclude.includes(key)) continue;
     for (const r of (p.refs || [])) {
       if (!r.d) continue;
       const dist = distance(Float32Array.from(r.d), d);
@@ -2300,16 +2342,18 @@ function openFaceTag(faceIdx, current) {
     </div>
     <div style="display:flex; gap:.5rem; align-items:center; margin-top:1rem; flex-wrap:wrap">
       <button class="btn" id="fs-send">標記</button>
+      ${guess ? `<button class="btn btn-ghost" id="fs-not" style="color:#b3402f">都不是 ${esc(guess.name)}</button>` : ''}
       <button class="btn btn-ghost" id="fs-cancel">取消</button>
       <span class="muted" id="fs-msg"></span>
     </div>`);
 
   if (guess) $('#fs-person').value = guess.id;
   $('#fs-cancel').addEventListener('click', closeFaceSheet);
-  $('#fs-send').addEventListener('click', () => submitFaceTag(faceIdx));
+  $('#fs-send').addEventListener('click', () => submitFaceTag(faceIdx, guess));
+  if (guess) $('#fs-not').addEventListener('click', () => excludeFace(faceIdx, guess));
 }
 
-async function submitFaceTag(faceIdx) {
+async function submitFaceTag(faceIdx, guess) {
   const personId = $('#fs-person').value;
   if (!personId) return toast('請選一位家人');
 
@@ -2318,6 +2362,9 @@ async function submitFaceTag(faceIdx) {
   const person = S.people.find((p) => p.id === personId);
   // 這張臉的位置、特徵值都已經在建置時算好了，直接送
   const ref = { p: photo.w, b: f.b, d: Array.from(descAt(faceIdx)).map((v) => +v.toFixed(5)) };
+  // 系統原本猜的人跟你選的不同 → 順便把這張臉標成「不是原本那個人」（修正認錯）
+  const wrongGuess = guess && guess.id !== personId ? guess : null;
+  const key = faceKey(faceIdx);
 
   $('#fs-send').disabled = true;
   $('#fs-msg').textContent = '標記中…';
@@ -2325,16 +2372,18 @@ async function submitFaceTag(faceIdx) {
   try {
     const res = await fetch('/api/tag', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ personId, ref }),
+      body: JSON.stringify({ personId, ref, excludeFrom: wrongGuess ? wrongGuess.id : undefined, excludeKey: wrongGuess ? key : undefined }),
     });
     const out = await res.json();
     if (!res.ok) throw new Error(out.error || '標記失敗');
     // 本機也加上這筆 ref，讓辨識馬上生效（不用等重新載入）
     if (person && !out.dup) { person.refs = person.refs || []; person.refs.push(ref); }
+    if (wrongGuess) applyExcludeLocal(wrongGuess, key);
     closeFaceSheet();
     toast(`已標記為 ${person ? person.name : ''} ✓`, 3000);
     // 若正在看燈箱，重畫人臉框（剛標的臉會變成「認得出」）
     if (!$('#lightbox').hidden && S.lb.showFaces) drawFaceBoxes(S.lb.list[S.lb.idx]);
+    if ((location.hash || '').includes('/person/')) route();
   } catch (err) {
     $('#fs-send').disabled = false;
     $('#fs-msg').textContent = '';

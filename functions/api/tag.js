@@ -64,8 +64,14 @@ export async function onRequestPost({ request, env }) {
     const body = await request.json();
     const personId = String(body.personId || '').replace(/[^a-zA-Z0-9一-鿿_-]/g, '').slice(0, 60);
     const ref = validRef(body.ref);
-    if (!personId) return json({ error: '沒有指定要標記給誰' }, 400);
-    if (!ref) return json({ error: '這張臉的資料不完整' }, 400);
+    // 「這張臉不是某人」：把這張臉排除掉，不再配到那個人（修正認錯）
+    const excludeFrom = String(body.excludeFrom || '').replace(/[^a-zA-Z0-9一-鿿_-]/g, '').slice(0, 60);
+    const excludeKey = String(body.excludeKey || '').replace(/[\x00-\x1f\x7f]/g, '').slice(0, 200);
+
+    const doTag = personId && ref;
+    const doExclude = excludeFrom && excludeKey;
+    if (!doTag && !doExclude) return json({ error: '沒有要做的事' }, 400);
+    if (personId && !ref) return json({ error: '這張臉的資料不完整' }, 400);
 
     const { owner, repo, branch } = repoOf(env);
     let lastErr;
@@ -76,18 +82,37 @@ export async function onRequestPost({ request, env }) {
         const baseCommit = await gh(env, `/repos/${owner}/${repo}/git/commits/${baseSha}`);
         const fileRes = await gh(env, `/repos/${owner}/${repo}/contents/${FILE}?ref=${branch}`);
         const data = fileRes ? JSON.parse(b64ToText(fileRes.content)) : { people: [] };
-        const person = (data.people || []).find((p) => p.id === personId);
-        if (!person) return json({ error: '找不到這位家族成員' }, 404);
-        person.refs = person.refs || [];
-        // 同一張臉別重複標（用 p+box 判斷）
-        const dup = person.refs.some((r) => r.p === ref.p && Array.isArray(r.b) && r.b[0] === ref.b[0] && r.b[1] === ref.b[1]);
-        if (!dup) person.refs.push(ref);
+        const msgs = [];
+        let tagged = null, dup = false;
+
+        if (doTag) {
+          const person = (data.people || []).find((p) => p.id === personId);
+          if (!person) return json({ error: '找不到這位家族成員' }, 404);
+          person.refs = person.refs || [];
+          dup = person.refs.some((r) => r.p === ref.p && Array.isArray(r.b) && r.b[0] === ref.b[0] && r.b[1] === ref.b[1]);
+          if (!dup) person.refs.push(ref);
+          tagged = person;
+          msgs.push(`標記 ${person.name} 的臉`);
+        }
+
+        if (doExclude) {
+          const ex = (data.people || []).find((p) => p.id === excludeFrom);
+          if (ex) {
+            ex.exclude = ex.exclude || [];
+            if (!ex.exclude.includes(excludeKey)) ex.exclude.push(excludeKey);
+            // 順手移除那個人身上這張臉的 ref（若之前被誤標過）
+            const [xp, xbox] = excludeKey.split('#');
+            const [xb0, xb1] = (xbox || '').split(',');
+            ex.refs = (ex.refs || []).filter((r) => !(r.p === xp && Array.isArray(r.b) && r.b[0].toFixed(3) === xb0 && r.b[1].toFixed(3) === xb1));
+            msgs.push(`把一張臉標為不是 ${ex.name}`);
+          }
+        }
 
         const blob = await gh(env, `/repos/${owner}/${repo}/git/blobs`, 'POST', { content: textToB64(JSON.stringify(data, null, 2) + '\n'), encoding: 'base64' });
         const tree = await gh(env, `/repos/${owner}/${repo}/git/trees`, 'POST', { base_tree: baseCommit.tree.sha, tree: [{ path: FILE, mode: '100644', type: 'blob', sha: blob.sha }] });
-        const commit = await gh(env, `/repos/${owner}/${repo}/git/commits`, 'POST', { message: `tag: ${sess.who || '家人'} 標記 ${person.name} 的臉 [skip ci]`, tree: tree.sha, parents: [baseSha] });
+        const commit = await gh(env, `/repos/${owner}/${repo}/git/commits`, 'POST', { message: `tag: ${sess.who || '家人'} ${msgs.join('、')} [skip ci]`, tree: tree.sha, parents: [baseSha] });
         await gh(env, `/repos/${owner}/${repo}/git/refs/heads/${branch}`, 'PATCH', { sha: commit.sha });
-        return json({ ok: true, personId, name: person.name, refs: person.refs.length, dup });
+        return json({ ok: true, personId, name: tagged ? tagged.name : null, refs: tagged ? tagged.refs.length : null, dup });
       } catch (e) {
         lastErr = e;
         if (/not a fast forward|\b422\b/i.test(String(e.message || e))) { await sleep(250 + attempt * 250); continue; }
