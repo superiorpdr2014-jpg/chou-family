@@ -2469,10 +2469,10 @@ function renderLogin() {
       <p class="login-sub">這是家人專屬的相簿。<br>為了保護大家的隱私，請確認你是家人。</p>
       <div class="login-form">
         <input class="input" id="lg-name" placeholder="你的名字" autocomplete="off">
-        <input class="input" id="lg-rel" placeholder="一位親人的名字（父母／另一半／小孩皆可）" autocomplete="off">
+        <input class="input" id="lg-rel" placeholder="另一位周家家人的名字（誰都可以）" autocomplete="off">
         <input class="input" id="lg-pw" type="password" placeholder="家族密碼">
         <button class="btn" id="lg-go">進入相簿</button>
-        <p class="login-hint" id="lg-msg">第二格填一位跟你最親的家人就好：<b>爸媽、另一半、或小孩都可以</b>。<br>嫁進／娶進周家的，這裡填<b>你的另一半（或小孩）</b>的名字，不是填你自己的爸媽喔。</p>
+        <p class="login-hint" id="lg-msg">第二格填<b>任何一位你認得的周家家人</b>名字就好——爸媽、另一半、小孩、兄弟姊妹都可以（只要跟你自己不同名）。</p>
       </div>
     </div>`;
 

@@ -96,15 +96,15 @@ export async function onRequestPost({ request, env }) {
       return json({ error: `族譜裡找不到「${name}」。請確認名字寫法，或請管理員把你加進族譜。` }, 403);
     }
 
-    // 蒐集這個人的近親名字：父母優先，沒有的話用另一半/小孩
-    const parents = (person.parents || []).map((id) => byId.get(id)).filter(Boolean).map((p) => p.name);
-    const spouses = (person.spouse || []).map((id) => byId.get(id)).filter(Boolean).map((p) => p.name);
-    const children = people.filter((p) => (p.parents || []).includes(person.id)).map((p) => p.name);
-    const relatives = [...parents, ...spouses, ...children];
-
-    // 族譜上有登記近親才驗；完全沒有近親可比對的（極少數）就放行，密碼＋名字已經是門檻
-    if (relatives.length && !relatives.includes(relative)) {
-      return json({ error: '第二格的名字對不上。若你是嫁進／娶進周家的，這裡要填你的另一半或小孩的名字（不是你自己的爸媽）。' }, 403);
+    /*
+     * 第二格：只要填一位「在族譜裡、而且不是自己」的家人名字就好，不限定直系。
+     * 為什麼不硬性要求填你自己的父母/直系：嫁進／娶進周家的人看不到族譜、
+     * 根本不知道自己父母有沒有被登記，硬指定直系會把他們卡在門外（Jay 回報的問題）。
+     * 家族密碼才是主要門檻；這一格只是再確認「你真的認得周家的人」。
+     */
+    const known = relative !== name && people.some((p) => p.name === relative);
+    if (!known) {
+      return json({ error: '第二格請填「另一位」你認得的周家家人名字（另一半、小孩、兄弟姊妹…誰都可以）。' }, 403);
     }
 
     // 發 session cookie
