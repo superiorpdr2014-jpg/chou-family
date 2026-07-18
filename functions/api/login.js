@@ -37,17 +37,18 @@ async function sign(secret, msg) {
   return b64url(new Uint8Array(sig));
 }
 
-async function validSession(request, env) {
-  if (!env.ADMIN_PASSWORD) return false;
+async function readSession(request, env) {
+  if (!env.ADMIN_PASSWORD) return null;
   const m = (request.headers.get('cookie') || '').match(/(?:^|;\s*)chou_sess=([^;]+)/);
-  if (!m) return false;
+  if (!m) return null;
   const [payload, sig] = m[1].split('.');
-  if (!payload || !sig || sig !== (await sign(env.ADMIN_PASSWORD, payload))) return false;
+  if (!payload || !sig || sig !== (await sign(env.ADMIN_PASSWORD, payload))) return null;
   try {
     const d = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(payload.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))));
-    return d.exp > Date.now();
-  } catch { return false; }
+    return d.exp > Date.now() ? d : null;
+  } catch { return null; }
 }
+async function validSession(request, env) { return !!(await readSession(request, env)); }
 
 async function loadPeople(env) {
   const [owner, repo] = String(env.GH_REPO).split('/');
@@ -68,7 +69,8 @@ export async function onRequestGet({ request, env }) {
       'set-cookie': 'chou_sess=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
     });
   }
-  return json({ ok: await validSession(request, env) });
+  const sess = await readSession(request, env);
+  return json({ ok: !!sess, who: sess ? sess.who : null });
 }
 
 export async function onRequestPost({ request, env }) {

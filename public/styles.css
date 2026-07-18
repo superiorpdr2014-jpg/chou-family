@@ -760,6 +760,19 @@ body.locked .topbar, body.locked .footer, body.locked #view { display: none; }
 .lb-btn-danger { background: rgba(200,60,50,.28); }
 .lb-btn-danger:hover { background: rgba(200,60,50,.55); }
 .lb-btn[hidden] { display: none; }
+.lb-btn.on { background: rgba(220,70,90,.30); }
+
+/* 留言 */
+.cmt-list { max-height: 46vh; overflow-y: auto; margin: .5rem 0 1rem; }
+.cmt { padding: .7rem 0; border-bottom: 1px solid var(--line); position: relative; }
+.cmt-head { display: flex; gap: .6rem; align-items: baseline; }
+.cmt-head b { color: var(--ink); }
+.cmt-head span { font-size: .78rem; color: var(--ink-faint); }
+.cmt-text { margin-top: .2rem; color: var(--ink-soft); white-space: pre-wrap; word-break: break-word; }
+.cmt-del { position: absolute; top: .7rem; right: 0; background: none; border: none; color: var(--ink-faint); font-size: .78rem; cursor: pointer; }
+.cmt-del:hover { color: #b3402f; }
+.cmt-input { display: flex; gap: .5rem; }
+.cmt-input .input { flex: 1; }
 
 /* ---------- 提示 ---------- */
 

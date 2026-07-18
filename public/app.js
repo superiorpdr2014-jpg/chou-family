@@ -63,7 +63,19 @@ const S = {
   lb: { list: [], idx: 0, showFaces: false },
   // 管理模式草稿
   draft: loadDraft(),
+  // 我是誰（登入的名字）＋互動資料
+  me: null,
+  interactions: {},   // "相簿id/name" → { h:[名字], c:[{id,by,text,at}] }
+  events: null,
 };
+
+/** 這張照片的互動 key（跨重建穩定） */
+function photoKey(pi) {
+  const photo = S.faces.photos[pi];
+  if (!photo) return null;
+  const m = (photo.w || photo.t || '').match(/\/([^/]+)\.webp$/);
+  return m ? `${photo.a}/${m[1]}` : null;
+}
 
 /* ============ 小工具 ============ */
 
@@ -136,6 +148,12 @@ async function loadData() {
   }
 
   for (const a of albums.albums) for (const p of a.photos) S.photoAlbum[p.i] = a;
+
+  // 互動資料（愛心/留言）——失敗就當空的，不影響看照片
+  try {
+    const ir = await fetch('/api/interactions', { cache: 'no-cache' });
+    if (ir.ok) S.interactions = await ir.json();
+  } catch { /* 沒關係 */ }
 
   const totalFaces = faces.count;
   $('#footer-stats').textContent =
@@ -1585,6 +1603,108 @@ function requestPhotoDelete(pi) {
   });
 }
 
+/* ============ 照片互動：愛心 ❤ ＋ 留言 💬 ============ */
+
+/** 依 S.interactions 更新目前這張的愛心/留言鈕外觀 */
+function updateSocialButtons(pi) {
+  const key = photoKey(pi);
+  const it = (key && S.interactions[key]) || { h: [], c: [] };
+  const hearts = it.h || [], comments = it.c || [];
+  const mine = S.me && hearts.includes(S.me);
+  const hb = $('#lb-heart');
+  hb.firstChild.textContent = mine ? '❤️ ' : '🤍 ';
+  hb.classList.toggle('on', !!mine);
+  $('#lb-heart-n').textContent = hearts.length || '';
+  $('#lb-comment-n').textContent = comments.length || '';
+}
+
+async function toggleHeart(pi) {
+  const key = photoKey(pi);
+  if (!key) return;
+  const it = S.interactions[key] || (S.interactions[key] = { h: [], c: [] });
+  it.h = it.h || [];
+  // 樂觀更新：先動畫面，再送出
+  const had = S.me && it.h.includes(S.me);
+  if (had) it.h = it.h.filter((n) => n !== S.me); else it.h.push(S.me || '家人');
+  updateSocialButtons(pi);
+  try {
+    const r = await fetch('/api/interactions', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'heart', key }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || '失敗');
+    // 以伺服器回來的數字為準（避免多裝置不同步）
+  } catch (err) {
+    // 失敗就還原
+    if (had) it.h.push(S.me || '家人'); else it.h = it.h.filter((n) => n !== S.me);
+    updateSocialButtons(pi);
+    toast(err.message, 4000);
+  }
+}
+
+/** 留言：用底部面板列出＋輸入 */
+function openComments(pi) {
+  const key = photoKey(pi);
+  if (!key) return;
+  const render = () => {
+    const it = S.interactions[key] || { h: [], c: [] };
+    const comments = it.c || [];
+    showFaceSheet(`
+      <h3>留言 · 回憶</h3>
+      <div class="cmt-list" id="cmt-list">
+        ${comments.length ? comments.map((c) => `
+          <div class="cmt" data-cid="${esc(c.id)}">
+            <div class="cmt-head"><b>${esc(c.by)}</b><span>${esc(c.at)}</span></div>
+            <div class="cmt-text">${esc(c.text)}</div>
+            ${(c.by === S.me || sessionStorage.getItem('chou-admin')) ? `<button class="cmt-del" data-cid="${esc(c.id)}">刪除</button>` : ''}
+          </div>`).join('') : '<p class="hint">還沒有人留言，來寫下第一句回憶吧。</p>'}
+      </div>
+      <div class="cmt-input">
+        <input class="input" id="cmt-text" placeholder="寫下這張照片的回憶…" maxlength="500">
+        <button class="btn" id="cmt-send">送出</button>
+      </div>`);
+
+    $('#cmt-send').addEventListener('click', async () => {
+      const text = $('#cmt-text').value.trim();
+      if (!text) return toast('留言不能空白');
+      $('#cmt-send').disabled = true;
+      try {
+        const r = await fetch('/api/interactions', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'comment', key, text }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || '送出失敗');
+        const it = S.interactions[key] || (S.interactions[key] = { h: [], c: [] });
+        it.c = it.c || []; it.c.push(d.comment);
+        updateSocialButtons(pi);
+        render();
+      } catch (err) { $('#cmt-send').disabled = false; toast(err.message, 4000); }
+    });
+    $('#cmt-text').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#cmt-send').click(); });
+
+    $('#cmt-list').addEventListener('click', async (e) => {
+      const btn = e.target.closest('.cmt-del');
+      if (!btn) return;
+      if (!confirm('刪掉這則留言？')) return;
+      const cid = btn.dataset.cid;
+      try {
+        const r = await fetch('/api/interactions', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'uncomment', key, cid, adminPassword: sessionStorage.getItem('chou-admin') || undefined }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || '刪除失敗');
+        const it = S.interactions[key]; if (it) it.c = (it.c || []).filter((x) => x.id !== cid);
+        updateSocialButtons(pi);
+        render();
+      } catch (err) { toast(err.message, 4000); }
+    });
+  };
+  render();
+}
+
 function showPhoto() {
   const pi = S.lb.list[S.lb.idx];
   const photo = S.faces.photos[pi];
@@ -1603,6 +1723,8 @@ function showPhoto() {
   // 申請刪除這張照片（送出後要管理員核准才會真的刪）
   const del = $('#lb-delete');
   del.onclick = () => requestPhotoDelete(pi);
+
+  updateSocialButtons(pi);
 
   $('#lb-faces').innerHTML = '';
   img.onload = () => drawFaceBoxes(pi);
@@ -1873,6 +1995,8 @@ function initLightbox() {
     drawFaceBoxes(S.lb.list[S.lb.idx]);
   });
   $('#lb-stage').addEventListener('click', (e) => { if (e.target.id === 'lb-stage') closeLightbox(); });
+  $('#lb-heart').addEventListener('click', () => toggleHeart(S.lb.list[S.lb.idx]));
+  $('#lb-comment').addEventListener('click', () => openComments(S.lb.list[S.lb.idx]));
 
   // 點人臉框 → 認得出就去看那個人，認不出就標記給某位家人
   $('#lb-faces').addEventListener('click', (e) => {
@@ -1910,6 +2034,7 @@ async function isLoggedIn() {
     const r = await fetch('/api/login', { method: 'GET', cache: 'no-store' });
     if (!r.ok) return false;
     const d = await r.json();
+    S.me = d.who || null;
     return !!d.ok;
   } catch { return false; }
 }
