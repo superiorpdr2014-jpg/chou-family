@@ -325,26 +325,28 @@ function renderHome() {
     </div>
 
     ${upcoming.length ? `
-    <div class="wrap" style="padding-top:0; padding-bottom:0">
-      <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; flex-wrap:wrap">
-        <div>
-          <h2>📣 即將到來的家族聚會</h2>
-          <p>點進去回覆你會不會到</p>
+    <section class="upcoming-band">
+      <div class="wrap">
+        <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; flex-wrap:wrap">
+          <div>
+            <h2>📣 即將到來的家族聚會</h2>
+            <p>點進去回覆你會不會到</p>
+          </div>
+          <a class="btn btn-ghost btn-sm" href="#/board">看全部聚會 →</a>
         </div>
-        <a class="btn btn-ghost btn-sm" href="#/board">看全部聚會 →</a>
+        <div class="upcoming">
+          ${upcoming.map((ev) => {
+            const yes = Object.values(ev.rsvps || {}).filter((s) => s === 'yes').length;
+            return `<a class="upcoming-card" href="#/board">
+              <div class="up-when">🗓️ ${esc(fmtEventWhen(ev.when) || '時間待定')}</div>
+              <div class="up-title">${esc(ev.title)}</div>
+              ${ev.where ? `<div class="up-where">📍 ${esc(ev.where)}</div>` : ''}
+              <div class="up-rsvp">${yes ? `已有 ${yes} 位會到` : '還沒有人回覆'} · 點我回覆 →</div>
+            </a>`;
+          }).join('')}
+        </div>
       </div>
-      <div class="upcoming">
-        ${upcoming.map((ev) => {
-          const yes = Object.values(ev.rsvps || {}).filter((s) => s === 'yes').length;
-          return `<a class="upcoming-card" href="#/board">
-            <div class="up-when">🗓️ ${esc(fmtEventWhen(ev.when) || '時間待定')}</div>
-            <div class="up-title">${esc(ev.title)}</div>
-            ${ev.where ? `<div class="up-where">📍 ${esc(ev.where)}</div>` : ''}
-            <div class="up-rsvp">${yes ? `已有 ${yes} 位會到` : '還沒有人回覆'} · 點我回覆 →</div>
-          </a>`;
-        }).join('')}
-      </div>
-    </div>` : ''}
+    </section>` : ''}
 
     ${recent.length ? `
     <div class="wrap" style="padding-bottom:0">

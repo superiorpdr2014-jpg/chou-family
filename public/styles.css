@@ -215,13 +215,20 @@ a { color: inherit; }
 }
 .hero-cta-solid:hover { background: var(--accent-dark); }
 
-/* ---------- 首頁：即將到來的家族聚會 ---------- */
-.upcoming { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); }
+/* ---------- 首頁：即將到來的家族聚會（滿版公佈欄） ---------- */
+.upcoming-band {
+  width: 100%;
+  background: linear-gradient(180deg, #fbeee2, #f6e7d6);
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  padding: clamp(1.5rem, 3.5vw, 2.75rem) 0;
+  margin: clamp(1rem, 2.5vw, 1.75rem) 0;
+}
+.upcoming { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
 .upcoming-card {
   display: block; text-decoration: none;
-  background: linear-gradient(180deg, #fffaf6, var(--paper-2));
+  background: #fff;
   border: 1px solid var(--accent); border-left-width: 4px;
-  border-radius: var(--radius); padding: 1rem 1.15rem;
+  border-radius: var(--radius); padding: 1.1rem 1.35rem;
   transition: transform .15s ease, box-shadow .15s ease;
 }
 .upcoming-card:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(43,35,32,.12); }
