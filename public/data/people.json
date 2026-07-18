@@ -10790,7 +10790,9 @@
       "name": "王法程",
       "gender": "M",
       "note": "周月慧與王勇銘的兒子（大兒子）",
-      "spouse": [],
+      "spouse": [
+        "p-1784338263221-1"
+      ],
       "parents": [
         "zhou-yuehui",
         "wang-yongming"
@@ -13355,6 +13357,49 @@
       "parents": [
         "wang-fazheng",
         "p-1784336388169-1"
+      ],
+      "refs": []
+    },
+    {
+      "id": "p-1784338263221-1",
+      "name": "宋姵儀",
+      "note": "王法程的配偶",
+      "spouse": [
+        "wang-facheng"
+      ],
+      "parents": [],
+      "refs": []
+    },
+    {
+      "id": "p-1784338263221-2",
+      "name": "王棠幼",
+      "note": "王法程的小孩",
+      "spouse": [],
+      "parents": [
+        "wang-facheng",
+        "p-1784338263221-1"
+      ],
+      "refs": []
+    },
+    {
+      "id": "p-1784338263221-3",
+      "name": "王棠巧",
+      "note": "王法程的小孩",
+      "spouse": [],
+      "parents": [
+        "wang-facheng",
+        "p-1784338263221-1"
+      ],
+      "refs": []
+    },
+    {
+      "id": "p-1784338263221-4",
+      "name": "王善妍",
+      "note": "王法程的小孩",
+      "spouse": [],
+      "parents": [
+        "wang-facheng",
+        "p-1784338263221-1"
       ],
       "refs": []
     }
