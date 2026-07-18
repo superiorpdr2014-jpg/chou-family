@@ -184,9 +184,9 @@ a { color: inherit; }
 .people-banner { width: 100%; margin-bottom: clamp(1.25rem, 3vw, 2rem); }
 .people-banner > img {
   display: block; width: 100%;
-  height: clamp(340px, 45vw, 740px);   /* 拉高，少切到人臉 */
+  height: clamp(400px, 58vw, 1000px);   /* 再拉高，上下露更多 */
   object-fit: cover;
-  object-position: center 58%;   /* 人臉在照片中下段，往下取才看得到大家 */
+  object-position: center 52%;
 }
 /* 手機版：顯示整張照片，不裁切 */
 @media (max-width: 640px) {
