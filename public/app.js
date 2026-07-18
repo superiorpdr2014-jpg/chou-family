@@ -2261,7 +2261,27 @@ function openFaceMenu(faceIdx, person) {
 }
 
 /** 標記面板：把這張臉指定給某位家族成員 */
+/**
+ * 用「已標記過的臉」猜這張臉是誰（比嚴格門檻寬一點，反正人會再確認）。
+ * 這樣家人標記得越多，系統越會主動猜對→一鍵確認，認人越來越快、也match到更多照片。
+ */
+function suggestPerson(faceIdx) {
+  const f = S.faces.faces[faceIdx];
+  if (!f.q) return null;
+  const d = descAt(faceIdx);
+  let best = null, bestDist = Infinity;
+  for (const p of S.people) {
+    for (const r of (p.refs || [])) {
+      if (!r.d) continue;
+      const dist = distance(Float32Array.from(r.d), d);
+      if (dist < bestDist) { bestDist = dist; best = p; }
+    }
+  }
+  return best && bestDist <= 0.52 ? best : null;   // 太遠就不亂猜
+}
+
 function openFaceTag(faceIdx, current) {
+  const guess = current || suggestPerson(faceIdx);
   const opts = S.people
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant'))
@@ -2270,7 +2290,8 @@ function openFaceTag(faceIdx, current) {
 
   showFaceSheet(`
     <h3>這張臉是誰？</h3>
-    <p class="hint">選出這是族譜裡的哪一位，送出馬上生效，系統之後就會在別的照片裡自動認出他。</p>
+    ${guess ? `<p class="hint">系統猜是 <b>${esc(guess.name)}</b> —— 對的話直接按「標記」，不對就改選。</p>`
+            : '<p class="hint">選出這是族譜裡的哪一位，送出馬上生效，系統之後就會在別的照片裡自動認出他。</p>'}
     <div class="edit-grid" style="margin-top:.75rem">
       <label class="fld">
         <span>是這位家人</span>
@@ -2283,7 +2304,7 @@ function openFaceTag(faceIdx, current) {
       <span class="muted" id="fs-msg"></span>
     </div>`);
 
-  if (current) $('#fs-person').value = current.id;
+  if (guess) $('#fs-person').value = guess.id;
   $('#fs-cancel').addEventListener('click', closeFaceSheet);
   $('#fs-send').addEventListener('click', () => submitFaceTag(faceIdx));
 }
