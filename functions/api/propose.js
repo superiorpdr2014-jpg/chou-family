@@ -125,6 +125,8 @@ export async function onRequestPost({ request, env }) {
     const changes = {};
     const name = cleanName(form.get('name'));
     if (name) changes.name = name;
+    const born = String(form.get('born') || '').replace(/[^0-9]/g, '').slice(0, 4);
+    if (born && +born >= 1900 && +born <= 2100) changes.born = +born;
 
     const addSpouse = cleanName(form.get('addSpouse'));
     if (addSpouse) changes.addSpouse = addSpouse;

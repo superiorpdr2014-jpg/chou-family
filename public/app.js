@@ -934,7 +934,9 @@ function renderPerson(id) {
 
   const ctx = buildFamily();
   const refs = (person.refs || []).map((r) => Float32Array.from(r.d));
-  const matches = refs.length ? matchPhotos(refs, STRICTNESS.normal.value) : [];
+  let matches = refs.length ? matchPhotos(refs, STRICTNESS.normal.value) : [];
+  // 有填出生年就過濾掉出生前的照片（小baby/小孩很容易被誤配到出生前的合照）
+  if (person.born) matches = matches.filter((m) => !m.album || !m.album.date || m.album.date.slice(0, 4) >= String(person.born));
   const groups = groupByAlbum(matches);
 
   const rel = [];
@@ -1012,6 +1014,11 @@ function renderEditForm(person) {
         <label class="fld">
           <span>名字寫錯了？</span>
           <input class="input" id="ed-name" placeholder="${esc(person.name)}" maxlength="20">
+        </label>
+        <label class="fld">
+          <span>出生年份</span>
+          <input class="input" id="ed-born" type="number" inputmode="numeric" min="1900" max="2100" placeholder="${person.born ? esc(String(person.born)) : '例：2020（小孩很重要）'}">
+          <p class="hint" style="margin:.4rem 0 0">填了之後，系統就<b>不會把他配到出生前的照片</b>——小baby、小朋友特別建議填，可避免認錯。</p>
         </label>
         <label class="fld">
           <span>換一張大頭照</span>
@@ -1232,6 +1239,9 @@ async function descriptorFromCrop() {
 
 async function submitEdit(person) {
   const name = $('#ed-name').value.trim();
+  const bornRaw = $('#ed-born').value.trim();
+  const born = bornRaw && /^\d{4}$/.test(bornRaw) && +bornRaw >= 1900 && +bornRaw <= 2100 ? bornRaw : '';
+  if (bornRaw && !born) return toast('出生年份請填四位數，例如 2020');
   const spouse = $('#ed-spouse').value.trim();
   const kids = $('#ed-kids').value.split('\n').map((s) => s.trim()).filter(Boolean);
   const unspouse = $('#ed-unspouse') ? $('#ed-unspouse').value : '';
@@ -1242,7 +1252,7 @@ async function submitEdit(person) {
 
   if (!pw) return toast('請輸入家族密碼');
   if (!by) return toast('請填你的名字，讓管理員知道是誰改的');
-  if (!name && !spouse && !kids.length && !file && !unspouse && !remove) return toast('沒有填任何要改的東西');
+  if (!name && !born && !spouse && !kids.length && !file && !unspouse && !remove) return toast('沒有填任何要改的東西');
   if (remove && !confirm(`確定要把「${person.name}」整個從族譜移除嗎？\n（要管理員核准才會真的移除）`)) return;
 
   /*
@@ -1284,6 +1294,7 @@ async function submitEdit(person) {
   fd.append('target', person.id);
   fd.append('targetName', person.name);
   if (name) fd.append('name', name);
+  if (born) fd.append('born', born);
   if (addSpouseName) fd.append('addSpouse', addSpouseName);
   if (linkSpouseId) fd.append('linkSpouse', linkSpouseId);
   if (newKids.length) fd.append('addChildren', JSON.stringify(newKids));
@@ -1734,6 +1745,7 @@ async function loadProposals() {
       const c = p.changes || {};
       const rows = [];
       if (c.name) rows.push(`名字改成「<b>${esc(c.name)}</b>」`);
+      if (c.born) rows.push(`設定出生年為 <b>${esc(String(c.born))}</b>（不再配到出生前的照片）`);
       if (c.avatarImg) rows.push(`換大頭照`);
       if (c.addSpouse) rows.push(`新增配偶「<b>${esc(c.addSpouse)}</b>」`);
       if (c.addChildren) rows.push(`新增小孩「<b>${esc(c.addChildren.join('、'))}</b>」`);

@@ -89,6 +89,11 @@ function applyProposal(data, prop) {
     person.name = c.name;
   }
 
+  if (c.born && +c.born >= 1900 && +c.born <= 2100) {
+    person.born = +c.born;
+    log.push(`設定 ${person.name} 出生年 ${person.born}`);
+  }
+
   if (c.avatarImg) {
     const imgPath = c.avatarImg.replace(/^proposals\/avatars\//, 'avatars/');
     person.avatar = { img: imgPath };
