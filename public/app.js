@@ -777,6 +777,11 @@ function renderEditForm(person) {
         <label class="fld">
           <span>換一張大頭照</span>
           <input class="input" id="ed-avatar" type="file" accept="image/*">
+          <p class="hint" style="margin:.4rem 0 0">
+            用<b>正面、清楚</b>的人臉照片，框住他的頭。這樣系統才能自動在相簿裡認出他、
+            他也才找得到自己的合影。
+          </p>
+          <div id="ed-crop" hidden></div>
         </label>
         <label class="fld">
           <span>新增另一半</span>
@@ -823,6 +828,139 @@ function renderEditForm(person) {
 
   $('#ed-cancel').addEventListener('click', () => { box.innerHTML = ''; delete box.dataset.open; });
   $('#ed-send').addEventListener('click', () => submitEdit(person));
+
+  // 選了大頭照 → 出現方框裁切工具
+  S.avatarCrop = null;
+  $('#ed-avatar').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) setupAvatarCrop(file);
+    else { $('#ed-crop').hidden = true; S.avatarCrop = null; }
+  });
+}
+
+/*
+ * 大頭照裁切：選了照片後，蓋一個可拖曳、可縮放的方框，讓家人框住人頭。
+ * 手機是主戰場，所以用 pointer events（滑鼠和觸控都吃）。
+ */
+function setupAvatarCrop(file) {
+  const wrap = $('#ed-crop');
+  wrap.hidden = false;
+  wrap.innerHTML = `<div class="crop-loading">讀取照片…</div>`;
+
+  const url = URL.createObjectURL(file);
+  loadImage(url).then((img) => {
+    S.avatarCrop = { img, file };
+    wrap.innerHTML = `
+      <div class="crop-stage" id="crop-stage">
+        <img class="crop-img" id="crop-img" src="${url}" alt="">
+        <div class="crop-shade"></div>
+        <div class="crop-box" id="crop-box">
+          <span class="crop-handle"></span>
+        </div>
+      </div>
+      <p class="hint" style="margin:.4rem 0 0">拖動方框對準頭，拉右下角可縮放。</p>`;
+
+    const stage = $('#crop-stage');
+    const cbox = $('#crop-box');
+    const handle = cbox.querySelector('.crop-handle');
+
+    // 等圖片排版好才知道實際顯示尺寸
+    requestAnimationFrame(() => {
+      const iw = $('#crop-img').clientWidth;
+      const ih = $('#crop-img').clientHeight;
+      stage.style.height = ih + 'px';
+      // 預設方框：置中、邊長取短邊的 60%
+      let size = Math.round(Math.min(iw, ih) * 0.6);
+      let x = Math.round((iw - size) / 2);
+      let y = Math.round((ih - size) / 3); // 稍微偏上，頭通常在上半部
+      const apply = () => {
+        cbox.style.left = x + 'px'; cbox.style.top = y + 'px';
+        cbox.style.width = size + 'px'; cbox.style.height = size + 'px';
+        S.avatarCrop.rect = { x: x / iw, y: y / ih, size: size / iw, iw, ih };
+      };
+      apply();
+
+      const clamp = () => {
+        size = Math.max(48, Math.min(size, iw, ih));
+        x = Math.max(0, Math.min(x, iw - size));
+        y = Math.max(0, Math.min(y, ih - size));
+      };
+
+      let mode = null, sx = 0, sy = 0, ox = 0, oy = 0, osize = 0;
+      const onDown = (e, m) => {
+        e.preventDefault();
+        mode = m;
+        const pt = e.touches ? e.touches[0] : e;
+        sx = pt.clientX; sy = pt.clientY; ox = x; oy = y; osize = size;
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+      };
+      const onMove = (e) => {
+        if (!mode) return;
+        const dx = e.clientX - sx, dy = e.clientY - sy;
+        if (mode === 'move') { x = ox + dx; y = oy + dy; }
+        else { size = osize + Math.max(dx, dy); } // 縮放：以右下角拉
+        clamp(); apply();
+      };
+      const onUp = () => {
+        mode = null;
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+      };
+      cbox.addEventListener('pointerdown', (e) => { if (e.target !== handle) onDown(e, 'move'); });
+      handle.addEventListener('pointerdown', (e) => onDown(e, 'resize'));
+    });
+  }).catch(() => { wrap.innerHTML = `<p class="hint">照片讀取失敗，換一張試試。</p>`; });
+}
+
+/** 把裁切框內容畫成正方形 canvas，回傳 {blob, canvas} */
+async function getCroppedAvatar(size = 400) {
+  const c = S.avatarCrop;
+  if (!c || !c.rect || !c.img) return null;
+  const { img, rect } = c;
+  const nw = img.naturalWidth, nh = img.naturalHeight;
+  const sx = rect.x * nw, sy = rect.y * nh, sSize = rect.size * nw;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, sx, sy, sSize, sSize, 0, 0, size, size);
+  const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.9));
+  return { blob, canvas };
+}
+
+/*
+ * 從上傳的原圖抓臉的特徵值。
+ * ⚠️ 一定要在「原圖」上偵測，不是在裁切的小方框上 ——
+ * 家人可能把框拉很緊只框到五官，那樣人臉偵測器（需要額頭/下巴等邊界）會抓不到。
+ * 所以：在整張原圖上找所有臉 → 挑中心落在裁切框內的那張（多張就取最大的）。
+ * 這樣不管框多緊都認得到。
+ */
+async function descriptorFromCrop() {
+  const c = S.avatarCrop;
+  if (!c || !c.rect || !c.img) return null;
+  await ensureModels();
+
+  const results = await faceapi
+    .detectAllFaces(c.img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4, maxResults: 20 }))
+    .withFaceLandmarks().withFaceDescriptors();
+  if (!results.length) return null;
+
+  const nw = c.img.naturalWidth, nh = c.img.naturalHeight;
+  const rx = c.rect.x, ry = c.rect.y, rs = c.rect.size; // 都是 0~1（相對原圖寬）
+  const rsH = rs * nw / nh; // 框在高度方向的相對值
+  const cxCrop = rx + rs / 2, cyCrop = ry + rsH / 2;
+
+  let best = null, bestScore = -1;
+  for (const r of results) {
+    const b = r.detection.box;
+    const fcx = (b.x + b.width / 2) / nw, fcy = (b.y + b.height / 2) / nh;
+    const inside = fcx >= rx && fcx <= rx + rs && fcy >= ry && fcy <= ry + rsH;
+    // 框內優先；框內的挑臉最大的；沒有框內的就挑離框中心最近的
+    const dist = Math.hypot(fcx - cxCrop, fcy - cyCrop);
+    const score = inside ? 10 + b.width * b.height : -dist;
+    if (score > bestScore) { bestScore = score; best = r; }
+  }
+  return best ? Array.from(best.descriptor).map((v) => +v.toFixed(5)) : null;
 }
 
 async function submitEdit(person) {
@@ -843,6 +981,9 @@ async function submitEdit(person) {
   localStorage.setItem('chou-pw', pw);
   localStorage.setItem('chou-name', by);
 
+  $('#ed-send').disabled = true;
+  $('#ed-msg').textContent = '送出中…';
+
   const fd = new FormData();
   fd.append('password', pw);
   fd.append('submittedBy', by);
@@ -853,10 +994,21 @@ async function submitEdit(person) {
   if (kids.length) fd.append('addChildren', JSON.stringify(kids));
   if (unspouse) fd.append('removeSpouse', unspouse);
   if (remove) fd.append('removePerson', '1');
-  if (file) fd.append('avatar', file, file.name);
 
-  $('#ed-send').disabled = true;
-  $('#ed-msg').textContent = '送出中…';
+  // 大頭照：用裁切後的方框當顯示照，並跑一次人臉辨識抓特徵值，
+  // 這樣上傳的照片也能讓這個人在相簿裡被自動認出來
+  if (file && S.avatarCrop) {
+    const cropped = await getCroppedAvatar();
+    if (cropped) {
+      fd.append('avatar', cropped.blob, 'avatar.jpg');
+      try {
+        $('#ed-msg').textContent = '辨識人臉中…';
+        const descriptor = await descriptorFromCrop();
+        if (descriptor) fd.append('faceDescriptor', JSON.stringify(descriptor));
+      } catch { /* 抓不到臉沒關係，大頭照還是會換，只是不能自動辨識 */ }
+      $('#ed-msg').textContent = '送出中…';
+    }
+  }
   try {
     const res = await fetch('/api/propose', { method: 'POST', body: fd });
     const out = await res.json();
@@ -929,7 +1081,7 @@ async function loadProposals() {
         <div class="panel" style="margin-bottom:1rem" data-id="${esc(p.id)}">
           <h3>${esc(p.targetName || p.target)}</h3>
           <p class="hint">${esc(p.submittedBy)} 於 ${esc(p.submittedAt)} 提出</p>
-          ${c.avatarImg ? `<img src="${esc(c.avatarImg)}" alt="" style="width:90px;height:90px;object-fit:cover;border-radius:50%;margin:.5rem 0">` : ''}
+          ${c.avatarImg ? `<img src="https://raw.githubusercontent.com/superiorpdr2014-jpg/chou-family/main/${esc(c.avatarImg)}" alt="" style="width:90px;height:90px;object-fit:cover;border-radius:50%;margin:.5rem 0;background:#eee">` : ''}
           <ul style="margin:.5rem 0 1rem; padding-left:1.2rem">${rows.map((r) => `<li>${r}</li>`).join('')}</ul>
           <div style="display:flex; gap:.5rem; flex-wrap:wrap">
             <button class="btn btn-sm" data-act="approve">核准</button>

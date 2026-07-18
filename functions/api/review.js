@@ -88,8 +88,16 @@ function applyProposal(data, prop) {
   }
 
   if (c.avatarImg) {
-    person.avatar = { img: c.avatarImg.replace(/^proposals\//, 'avatars/') };
+    const imgPath = c.avatarImg.replace(/^proposals\//, 'avatars/');
+    person.avatar = { img: imgPath };
     log.push('換了大頭照');
+    // 有抓到人臉特徵值 → 加進 refs，讓他能在相簿裡被自動認出來。
+    // 存成 {img, d}：matchPhotos 只吃 .d，avatar 顯示走 .img，兩者相容。
+    if (c.faceDescriptor) {
+      person.refs = person.refs || [];
+      person.refs.push({ img: imgPath, d: c.faceDescriptor });
+      log.push('（可自動辨識相簿）');
+    }
   }
 
   if (c.addSpouse) {

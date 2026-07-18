@@ -113,6 +113,18 @@ export async function onRequestPost({ request, env }) {
       const path = `proposals/avatars/${id}${ext}`;
       files.push({ path, content: toBase64(buf) });
       changes.avatarImg = path;
+
+      // 前端在瀏覽器裡對裁切後的臉算好的 128 維特徵值，
+      // 核准後會加進這個人的 refs，讓他能在相簿裡被自動認出來
+      const desc = form.get('faceDescriptor');
+      if (desc) {
+        try {
+          const arr = JSON.parse(String(desc));
+          if (Array.isArray(arr) && arr.length === 128 && arr.every((n) => typeof n === 'number')) {
+            changes.faceDescriptor = arr;
+          }
+        } catch { /* 壞掉就當沒有，大頭照還是會換 */ }
+      }
     }
 
     if (!Object.keys(changes).length) return json({ error: '沒有填任何要改的東西' }, 400);

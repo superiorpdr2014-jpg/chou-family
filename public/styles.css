@@ -279,6 +279,36 @@ a { color: inherit; }
 .fld > span { font-size: .82rem; color: var(--ink-soft); font-weight: 500; }
 .fld textarea.input { resize: vertical; line-height: 1.5; }
 
+/* 大頭照方框裁切 */
+.crop-loading { padding: 1rem; color: var(--ink-faint); font-size: .85rem; }
+.crop-stage {
+  position: relative;
+  margin-top: .6rem;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  touch-action: none;   /* 手機上拖框時不要跟著捲頁面 */
+  user-select: none;
+  max-width: 100%;
+}
+.crop-img { display: block; width: 100%; height: auto; pointer-events: none; }
+.crop-shade { position: absolute; inset: 0; pointer-events: none; } /* 保留給未來加暗遮罩 */
+.crop-box {
+  position: absolute;
+  border: 2px solid #fff;
+  border-radius: 50%;   /* 圓形，跟大頭照一致，讓家人看得出最後長怎樣 */
+  box-shadow: 0 0 0 9999px rgba(0,0,0,.45);  /* 框外變暗，聚焦在頭上 */
+  cursor: move;
+  box-sizing: border-box;
+}
+.crop-handle {
+  position: absolute; right: -11px; bottom: -11px;
+  width: 26px; height: 26px;
+  background: var(--accent); border: 2px solid #fff; border-radius: 50%;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
 .strictness { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; font-size: .85rem; color: var(--ink-soft); }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 100px; overflow: hidden; }
 .seg button {
