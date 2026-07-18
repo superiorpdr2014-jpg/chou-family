@@ -264,6 +264,16 @@ function renderHome() {
   const cover = 'photos/2024427/w/0014.webp';
   const totalPhotos = S.faces.photos.length;
 
+  // 最近的聚會（2025 年起），每本挑人臉最多的那張＝大合照
+  const recent = albums
+    .filter((a) => a.date && a.date >= '2025-01-01')
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    .map((a) => {
+      const shot = a.photos.slice().sort((p, q) => (q.nf || 0) - (p.nf || 0))[0];
+      return shot ? { album: a, photo: shot } : null;
+    })
+    .filter(Boolean);
+
   view().innerHTML = `
     <section class="hero">
       <img class="hero-img" src="${cover}" alt="周氏大家族合照">
@@ -274,6 +284,24 @@ function renderHome() {
         <a class="hero-cta" href="#/find">找出我的照片 →</a>
       </div>
     </section>
+
+    ${recent.length ? `
+    <div class="wrap" style="padding-bottom:0">
+      <div class="section-head">
+        <h2>最近的家族聚會</h2>
+        <p>大家一起拍的大合照</p>
+      </div>
+      <div class="recent-shots">
+        ${recent.map((r) => `
+          <a class="recent-shot" href="#/album/${r.album.id}">
+            <img src="${r.photo.w}" alt="${esc(r.album.title)}" loading="lazy">
+            <div class="recent-cap">
+              <span class="recent-date">${fmtDate(r.album.date)}</span>
+              <span class="recent-title">${esc(r.album.title)}</span>
+            </div>
+          </a>`).join('')}
+      </div>
+    </div>` : ''}
 
     <div class="wrap">
       <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; flex-wrap:wrap">
