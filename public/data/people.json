@@ -13507,8 +13507,7 @@
       "name": "宋姵儀",
       "note": "王法程的配偶",
       "spouse": [
-        "wang-facheng",
-        "p-1784341570821-1"
+        "wang-facheng"
       ],
       "parents": [],
       "refs": [
@@ -14873,16 +14872,6 @@
         "zhou-hongduan",
         "li-maolin"
       ],
-      "refs": []
-    },
-    {
-      "id": "p-1784341570821-1",
-      "name": "王法程",
-      "note": "宋姵儀的配偶",
-      "spouse": [
-        "p-1784338263221-1"
-      ],
-      "parents": [],
       "refs": []
     }
   ]
