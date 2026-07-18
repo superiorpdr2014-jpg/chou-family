@@ -1276,6 +1276,168 @@ async function submitEdit(person) {
   }
 }
 
+/* ============ 畫面：家族聚會公佈欄 ＋ 回覆出席 ============ */
+
+async function renderBoard() {
+  view().innerHTML = `<div class="wrap"><div class="loading"><span class="spinner"></span>載入中…</div></div>`;
+  let data = { events: [] };
+  try {
+    const r = await fetch('/api/events', { cache: 'no-cache' });
+    if (r.ok) data = await r.json();
+  } catch { /* 空的就空的 */ }
+  S.events = data.events || [];
+  const isAdmin = !!sessionStorage.getItem('chou-admin');
+
+  const rsvpCard = (ev) => {
+    const rsvps = ev.rsvps || {};
+    const names = (st) => Object.keys(rsvps).filter((n) => rsvps[n] === st);
+    const yes = names('yes'), maybe = names('maybe'), no = names('no');
+    const mine = S.me ? rsvps[S.me] : null;
+    const btn = (st, label) => `<button class="rsvp-btn ${mine === st ? 'on ' + st : ''}" data-id="${esc(ev.id)}" data-st="${st}">${label}</button>`;
+    return `
+      <div class="event-card" data-id="${esc(ev.id)}">
+        <div class="event-head">
+          <h3>${esc(ev.title)}</h3>
+          ${isAdmin ? `<button class="event-del" data-id="${esc(ev.id)}" title="刪除">🗑</button>` : ''}
+        </div>
+        <div class="event-meta">
+          ${ev.when ? `<span>🗓️ ${esc(ev.when)}</span>` : ''}
+          ${ev.where ? `<span>📍 ${esc(ev.where)}</span>` : ''}
+        </div>
+        ${ev.note ? `<p class="event-note">${esc(ev.note)}</p>` : ''}
+        <div class="rsvp-row">${btn('yes', '✅ 我會到')}${btn('maybe', '🤔 再看看')}${btn('no', '🙏 不克出席')}</div>
+        <div class="rsvp-tally">
+          <b>${yes.length}</b> 位會到${yes.length ? '：' + yes.map(esc).join('、') : ''}
+          ${maybe.length ? ` · ${maybe.length} 位再看看` : ''}
+          ${no.length ? ` · ${no.length} 位不克` : ''}
+        </div>
+      </div>`;
+  };
+
+  view().innerHTML = `
+    <div class="wrap">
+      <div class="section-head">
+        <h2>家族聚會</h2>
+        <p>聚餐、活動看這裡，順手回覆你會不會到。</p>
+      </div>
+      ${isAdmin ? `
+        <div class="panel" style="margin-bottom:1.5rem">
+          <h3 style="margin:0 0 .6rem">新增一場聚會</h3>
+          <div class="edit-grid">
+            <label class="fld"><span>名稱</span><input class="input" id="ev-title" placeholder="例：中秋家族聚餐"></label>
+            <label class="fld"><span>時間</span><input class="input" id="ev-when" placeholder="例：9/15（日）中午 12:00"></label>
+            <label class="fld"><span>地點</span><input class="input" id="ev-where" placeholder="例：樹林陶板屋"></label>
+            <label class="fld"><span>備註（可留空）</span><input class="input" id="ev-note" placeholder="例：停車場在B2"></label>
+          </div>
+          <div style="margin-top:.8rem"><button class="btn" id="ev-add">發布聚會</button> <span class="muted" id="ev-msg"></span></div>
+        </div>` : ''}
+      <div id="event-list">
+        ${S.events.length ? S.events.map(rsvpCard).join('') : '<div class="empty"><h3>目前沒有安排中的聚會</h3><p>有聚會時會公佈在這裡。</p></div>'}
+      </div>
+    </div>`;
+
+  // 回覆出席
+  $('#event-list').addEventListener('click', async (e) => {
+    const rb = e.target.closest('.rsvp-btn');
+    const db = e.target.closest('.event-del');
+    if (rb) {
+      const id = rb.dataset.id;
+      const ev = S.events.find((x) => x.id === id);
+      const status = (ev && ev.rsvps && ev.rsvps[S.me] === rb.dataset.st) ? null : rb.dataset.st; // 再點一次＝取消
+      try {
+        const r = await fetch('/api/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'rsvp', id, status }) });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || '失敗');
+        ev.rsvps = ev.rsvps || {};
+        if (status) ev.rsvps[S.me] = status; else delete ev.rsvps[S.me];
+        renderBoard();
+      } catch (err) { toast(err.message, 4000); }
+    } else if (db) {
+      if (!confirm('刪除這場聚會？')) return;
+      try {
+        const r = await fetch('/api/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'delete', id: db.dataset.id, adminPassword: sessionStorage.getItem('chou-admin') }) });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || '刪除失敗');
+        S.events = S.events.filter((x) => x.id !== db.dataset.id);
+        renderBoard();
+      } catch (err) { toast(err.message, 4000); }
+    }
+  });
+
+  if (isAdmin) $('#ev-add').addEventListener('click', async () => {
+    const title = $('#ev-title').value.trim();
+    if (!title) return toast('請填聚會名稱');
+    $('#ev-add').disabled = true; $('#ev-msg').textContent = '發布中…';
+    try {
+      const r = await fetch('/api/events', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'create', title, when: $('#ev-when').value.trim(), where: $('#ev-where').value.trim(), note: $('#ev-note').value.trim(), adminPassword: sessionStorage.getItem('chou-admin') }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '發布失敗');
+      renderBoard();
+    } catch (err) { $('#ev-add').disabled = false; $('#ev-msg').textContent = ''; toast(err.message, 4000); }
+  });
+}
+
+/* ============ 畫面：一起認人（把不認識的臉交給大家認） ============ */
+
+function renderIdentify() {
+  view().innerHTML = `
+    <div class="wrap">
+      <div class="section-head">
+        <h2>一起認人</h2>
+        <p>這些照片裡有還沒認出來的家人。點開照片、再點臉上的方框，就能幫忙標名字——認得越多，「找出我的照片」就越準。</p>
+      </div>
+      <div class="loading"><span class="spinner"></span>整理中…</div>
+    </div>`;
+
+  // 讓 spinner 先畫出來，再做比較重的計算
+  setTimeout(() => {
+    const faces = S.faces.faces;
+    const unknownByPhoto = new Map();
+    for (let i = 0; i < faces.length; i++) {
+      if (!faces[i].q) continue;        // 太小/太糊的臉不列入
+      if (whoIs(i)) continue;           // 已經認得出來的跳過
+      const pi = faces[i].p;
+      unknownByPhoto.set(pi, (unknownByPhoto.get(pi) || 0) + 1);
+    }
+    const list = [...unknownByPhoto.entries()].sort((a, b) => b[1] - a[1]).slice(0, 48);
+
+    const body = list.length ? `
+      <div class="grid" id="idg">
+        ${list.map(([pi, n]) => {
+          const photo = S.faces.photos[pi];
+          const album = S.photoAlbum[pi];
+          return `<button class="tile" data-pi="${pi}" title="${esc(album ? album.title : '')}">
+            <img src="${photo.t}" loading="lazy" alt="">
+            <span class="tile-badge">${n} 個待認</span>
+          </button>`;
+        }).join('')}
+      </div>` : '<div class="empty"><h3>太棒了，大家都認完了！</h3><p>目前沒有待認的家人。</p></div>';
+
+    view().innerHTML = `
+      <div class="wrap">
+        <div class="section-head">
+          <h2>一起認人</h2>
+          <p>這些照片裡有還沒認出來的家人。點開照片、再點臉上的方框，就能幫忙標名字——認得越多，「找出我的照片」就越準。</p>
+        </div>
+        ${body}
+      </div>`;
+
+    const g = $('#idg');
+    if (g) g.addEventListener('click', (e) => {
+      const b = e.target.closest('.tile');
+      if (!b) return;
+      const pi = +b.dataset.pi;
+      S.lb.showFaces = true;
+      $('#lb-toggle-faces').textContent = '隱藏人臉';
+      openLightbox([pi], 0);
+      toast('點臉上的方框，就能幫忙標名字 🙌', 3500);
+    });
+  }, 30);
+}
+
 /* ============ 畫面：待審清單（只有 Jay 用） ============ */
 
 function renderReview() {
@@ -1978,6 +2140,8 @@ function route() {
   if (page === 'find') return renderFind();
   if (page === 'upload') return renderUpload(arg ? decodeURIComponent(arg) : null);
   if (page === 'people' || page === 'tree') return renderTree();
+  if (page === 'board') return renderBoard();
+  if (page === 'identify') return renderIdentify();
   if (page === 'review') return renderReview();
   if (page === 'person' && arg) return renderPerson(decodeURIComponent(arg));
   renderNotFound();

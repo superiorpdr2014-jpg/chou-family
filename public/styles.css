@@ -54,7 +54,8 @@ a { color: inherit; }
   text-decoration: none;
 }
 
-.nav { display: flex; align-items: center; gap: clamp(.75rem, 2vw, 1.5rem); }
+.nav { display: flex; align-items: center; gap: clamp(.75rem, 2vw, 1.5rem); min-width: 0; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+.nav::-webkit-scrollbar { display: none; }
 .nav a { text-decoration: none; font-size: .92rem; color: var(--ink-soft); white-space: nowrap; }
 .nav a:hover { color: var(--ink); }
 .nav-cta {
@@ -773,6 +774,23 @@ body.locked .topbar, body.locked .footer, body.locked #view { display: none; }
 .cmt-del:hover { color: #b3402f; }
 .cmt-input { display: flex; gap: .5rem; }
 .cmt-input .input { flex: 1; }
+
+/* 家族聚會公佈欄 */
+.event-card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem 1.25rem; margin-bottom: 1rem; }
+.event-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.event-head h3 { margin: 0; font-family: var(--serif); font-size: 1.25rem; color: var(--ink); }
+.event-del { background: none; border: none; cursor: pointer; font-size: 1rem; opacity: .6; }
+.event-del:hover { opacity: 1; }
+.event-meta { display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; margin: .5rem 0; color: var(--ink-soft); font-size: .95rem; }
+.event-note { margin: .3rem 0 .6rem; color: var(--ink-soft); white-space: pre-wrap; }
+.rsvp-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: .8rem 0 .6rem; }
+.rsvp-btn { border: 1px solid var(--line); background: #fff; color: var(--ink-soft); padding: .45rem .9rem; border-radius: 100px; cursor: pointer; font-size: .9rem; }
+.rsvp-btn:hover { border-color: var(--accent); color: var(--ink); }
+.rsvp-btn.on.yes { background: #e8f3e8; border-color: #6fae6f; color: #2e6b2e; }
+.rsvp-btn.on.maybe { background: #fbf3e0; border-color: #d9b45c; color: #8a6516; }
+.rsvp-btn.on.no { background: #f6eae8; border-color: #c78a80; color: #9a4436; }
+.rsvp-tally { font-size: .88rem; color: var(--ink-faint); }
+.rsvp-tally b { color: var(--ink); }
 
 /* ---------- 提示 ---------- */
 
