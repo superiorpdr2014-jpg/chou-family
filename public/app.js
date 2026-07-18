@@ -303,6 +303,16 @@ function renderHome() {
       </div>
     </div>` : ''}
 
+    <section class="film-band" aria-label="家族影片">
+      <div class="film-frame">
+        <iframe
+          src="https://www.youtube-nocookie.com/embed/lb_ecsvOSOY?autoplay=1&mute=1&loop=1&playlist=lb_ecsvOSOY&controls=0&showinfo=0&modestbranding=1&rel=0&playsinline=1&disablekb=1&fs=0"
+          title="周氏大家族影片" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+      </div>
+      <div class="film-fade film-fade-top"></div>
+      <div class="film-fade film-fade-bottom"></div>
+    </section>
+
     <div class="wrap">
       <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; flex-wrap:wrap">
         <div>

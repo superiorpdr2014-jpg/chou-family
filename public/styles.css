@@ -154,6 +154,30 @@ a { color: inherit; }
 .recent-date { font-size: .8rem; letter-spacing: .1em; opacity: .9; }
 .recent-title { font-family: var(--serif); font-weight: 600; font-size: 1.25rem; text-shadow: 0 1px 8px rgba(0,0,0,.5); }
 
+/* ---------- 家族影片（滿版橫式長條、自動播放、上下淡出融入背景） ---------- */
+.film-band {
+  position: relative;
+  width: 100%;
+  /* 帶狀高度永遠小於 16:9 影片的 56.25vw，確保影片被裁成中間一條、不會露白邊 */
+  height: clamp(190px, 32vw, 520px);
+  margin: clamp(1.5rem, 4vw, 3rem) 0;
+  overflow: hidden;
+  background: var(--paper);
+}
+.film-frame { position: absolute; inset: 0; }
+.film-frame iframe {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  aspect-ratio: 16 / 9;   /* 高度 = 寬度 × 0.5625，比帶高還高 → 上下裁掉 */
+  border: 0;
+  pointer-events: none;   /* 純展示，避免點到 YouTube 介面 */
+}
+.film-fade { position: absolute; left: 0; right: 0; height: 40%; pointer-events: none; }
+.film-fade-top { top: 0; background: linear-gradient(to bottom, var(--paper) 0%, rgba(250,247,242,.6) 45%, rgba(250,247,242,0) 100%); }
+.film-fade-bottom { bottom: 0; background: linear-gradient(to top, var(--paper) 0%, rgba(250,247,242,.6) 45%, rgba(250,247,242,0) 100%); }
+
 /* ---------- 相簿列表 ---------- */
 
 .albums { display: grid; gap: clamp(1rem, 2.5vw, 1.75rem); grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); }

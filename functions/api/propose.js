@@ -76,7 +76,7 @@ export async function onRequestPost({ request, env }) {
     const submittedBy = cleanName(form.get('submittedBy')) || '家人';
 
     // —— 相簿改名（沒有 person target，另外處理） ——
-    const albumId = String(form.get('albumId') || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40);
+    const albumId = String(form.get('albumId') || '').replace(/[^a-zA-Z0-9一-鿿-]/g, '').slice(0, 60);
     const albumTitle = cleanName(form.get('albumTitle')).slice(0, 30);
     if (albumId) {
       if (!albumTitle) return json({ error: '請填新的相簿名稱' }, 400);

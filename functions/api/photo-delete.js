@@ -62,7 +62,8 @@ export async function onRequestPost({ request, env }) {
       return json({ error: '管理員密碼不對' }, 401);
     }
 
-    const albumId = String(body.albumId || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40);
+    // 允許中文：build.js 遇到怪年份會用相簿名當 id（含中文），這種也要能刪
+    const albumId = String(body.albumId || '').replace(/[^a-zA-Z0-9一-鿿-]/g, '').slice(0, 60);
     const name = String(body.name || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
     if (!albumId || !name) return json({ error: '沒有指定要刪哪張照片' }, 400);
 
