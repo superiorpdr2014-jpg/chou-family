@@ -97,14 +97,22 @@ export async function onRequestPost({ request, env }) {
     }
 
     /*
-     * 第二格：只要填一位「在族譜裡、而且不是自己」的家人名字就好，不限定直系。
-     * 為什麼不硬性要求填你自己的父母/直系：嫁進／娶進周家的人看不到族譜、
-     * 根本不知道自己父母有沒有被登記，硬指定直系會把他們卡在門外（Jay 回報的問題）。
-     * 家族密碼才是主要門檻；這一格只是再確認「你真的認得周家的人」。
+     * 第二格：填「你的配偶姓名」；沒有配偶就填「爸爸或媽媽的姓名」。
+     * 這樣嫁進／娶進周家的人也進得來——他們的配偶一定在族譜裡（原本硬要填自己父母，
+     * 但他們父母不在族譜、又看不到族譜，就被卡死了，這是 Jay 回報的問題）。
      */
-    const known = relative !== name && people.some((p) => p.name === relative);
-    if (!known) {
-      return json({ error: '第二格請填「另一位」你認得的周家家人名字（另一半、小孩、兄弟姊妹…誰都可以）。' }, 403);
+    const spouseNames = (person.spouse || []).map((id) => byId.get(id)).filter(Boolean).map((p) => p.name);
+    const parentNames = (person.parents || []).map((id) => byId.get(id)).filter(Boolean).map((p) => p.name);
+    const accept = [...spouseNames, ...parentNames];
+    if (accept.length) {
+      if (!accept.includes(relative)) {
+        return json({ error: '第二格對不上。請填「你的配偶姓名」；沒有配偶的話，填你爸爸或媽媽的姓名。' }, 403);
+      }
+    } else {
+      // 極少數：配偶和父母都不在族譜 → 放寬成「填另一位在族譜的家人」，才不會被鎖在外面
+      if (relative === name || !people.some((p) => p.name === relative)) {
+        return json({ error: '第二格請填一位在族譜裡的周家家人名字（跟你自己不同名）。' }, 403);
+      }
     }
 
     // 發 session cookie
