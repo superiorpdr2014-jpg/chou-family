@@ -180,7 +180,7 @@ async function refreshPeopleInBackground() {
     const fresh = await res.json();
     if (!fresh.people || !fresh.people.length) return;
 
-    const key = (p) => [p.id, p.name, p.spouse, p.parents, p.avatar, p.born, (p.refs || []).length];
+    const key = (p) => [p.id, p.name, p.note, p.spouse, p.parents, p.avatar, p.born, (p.refs || []).length];
     const same = JSON.stringify(fresh.people.map(key)) === JSON.stringify(S.people.map(key));
     if (same) return;
 

@@ -28,7 +28,7 @@
       "id": "zhou-zhennan",
       "name": "周振南",
       "gender": "M",
-      "note": "Jay 外公的二弟（已故）",
+      "note": "周振源的二弟（已故）",
       "spouse": [
         "zhou-yuyan"
       ],
@@ -42,7 +42,7 @@
       "id": "zhou-fen",
       "name": "周粉",
       "gender": "F",
-      "note": "Jay 的外婆",
+      "note": "周振南的太太",
       "spouse": [
         "zhou-zhenyuan"
       ],
@@ -619,7 +619,7 @@
       "id": "zhou-yuechun",
       "name": "周月春",
       "gender": "F",
-      "note": "周振南與周粉的女兒（七阿姨）",
+      "note": "周振南與周粉的女兒",
       "spouse": [
         "huang-zhaorui"
       ],
@@ -1824,7 +1824,7 @@
       "id": "zhou-yuezu",
       "name": "周月足",
       "gender": "F",
-      "note": "周振南與周粉的女兒，Jay 的媽媽",
+      "note": "周振南與周粉的女兒",
       "spouse": [
         "ma-shunjin"
       ],
@@ -2126,7 +2126,7 @@
       "id": "ma-shunjin",
       "name": "馬順進",
       "gender": "M",
-      "note": "周月足的先生，Jay 的爸爸",
+      "note": "周月足的先生",
       "spouse": [
         "zhou-yuezu"
       ],
@@ -3187,7 +3187,7 @@
       "id": "ma-chengxin",
       "name": "馬成新",
       "gender": "M",
-      "note": "周月足與馬順進的兒子，Jay 的弟弟",
+      "note": "周月足與馬順進的兒子",
       "spouse": [
         "su-peiru"
       ],
@@ -3672,7 +3672,7 @@
       "id": "zhou-yuejiao",
       "name": "周月嬌",
       "gender": "F",
-      "note": "周振南與周粉的女兒（大阿姨）",
+      "note": "周振南與周粉的女兒",
       "spouse": [],
       "parents": [
         "zhou-zhenyuan",
@@ -3972,7 +3972,7 @@
       "id": "zhou-yuemei",
       "name": "周月梅",
       "gender": "F",
-      "note": "周振南與周粉的女兒（二阿姨）",
+      "note": "周振南與周粉的女兒",
       "spouse": [
         "zhou-yuemei-husband"
       ],
@@ -4274,7 +4274,7 @@
       "id": "zhou-yuezhi",
       "name": "周月治",
       "gender": "F",
-      "note": "周振南與周粉的女兒（三阿姨）",
+      "note": "周振南與周粉的女兒",
       "spouse": [
         "p-1784375974791-1"
       ],
@@ -4715,7 +4715,7 @@
       "id": "zhou-yuehui",
       "name": "周月慧",
       "gender": "F",
-      "note": "周振南與周粉的女兒（四阿姨）",
+      "note": "周振南與周粉的女兒",
       "spouse": [
         "wang-yongming"
       ],
@@ -5038,7 +5038,7 @@
       "id": "zhou-meizhu",
       "name": "周美珠",
       "gender": "F",
-      "note": "周振南與周粉的女兒（六阿姨）",
+      "note": "周振南與周粉的女兒",
       "spouse": [
         "wu-zhenqi"
       ],
@@ -5618,7 +5618,7 @@
       "id": "zhou-mingbin",
       "name": "周銘斌",
       "gender": "M",
-      "note": "周振南與周粉的兒子（Jay 的大舅舅）",
+      "note": "周振南與周粉的兒子",
       "spouse": [
         "chen-jingmei"
       ],
@@ -6358,7 +6358,7 @@
       "id": "zhou-mingyang",
       "name": "周銘陽",
       "gender": "M",
-      "note": "周振南與周粉的兒子（Jay 的小舅舅）",
+      "note": "周振南與周粉的兒子",
       "spouse": [
         "wang-meizhi"
       ],
@@ -8043,7 +8043,7 @@
       "id": "zhou-zhenyuan",
       "name": "周振源",
       "gender": "M",
-      "note": "Jay 的外公（已故）",
+      "note": "周振南、周振裕的哥哥（已故）",
       "spouse": [
         "zhou-fen"
       ],
@@ -8356,7 +8356,7 @@
       "id": "zhou-zhenyu",
       "name": "周振裕",
       "gender": "M",
-      "note": "Jay 外公的小弟",
+      "note": "周振源的小弟",
       "spouse": [],
       "parents": [
         "zhou-great-grandfather",
@@ -9419,7 +9419,7 @@
     {
       "id": "zhou-yuehui-b",
       "name": "周月惠",
-      "note": "周振南與周玉燕的女兒（未婚）",
+      "note": "周振南與周玉燕的女兒",
       "spouse": [],
       "parents": [
         "zhou-zhennan",
