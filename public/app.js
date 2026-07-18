@@ -565,10 +565,15 @@ function renderFind() {
              照片只在你自己的裝置上處理，不會上傳到任何地方。</p>
         </div>
 
+        <button class="finder-cam" id="cam-btn">📷 用相機自拍一張</button>
+        <input type="file" id="cam" accept="image/*" capture="user" hidden>
+
+        <div class="finder-or"><span>或</span></div>
+
         <div class="dropzone" id="dz">
-          <div class="dz-icon">📷</div>
-          <h3>點這裡選一張照片</h3>
-          <p>或把照片拖進來 · 支援 JPG / PNG</p>
+          <div class="dz-icon">🖼️</div>
+          <h3>從相簿選一張照片</h3>
+          <p>也可以把照片拖進來 · 支援 JPG / PNG</p>
           <input type="file" id="file" accept="image/*" hidden>
         </div>
 
@@ -578,6 +583,10 @@ function renderFind() {
 
   const dz = $('#dz');
   const file = $('#file');
+  const cam = $('#cam');
+  // 相機：手機上會直接開前鏡頭自拍；電腦沒相機就退回選檔
+  $('#cam-btn').addEventListener('click', () => cam.click());
+  cam.addEventListener('change', () => cam.files[0] && handleUpload(cam.files[0]));
   dz.addEventListener('click', () => file.click());
   file.addEventListener('change', () => file.files[0] && handleUpload(file.files[0]));
   dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('over'); });

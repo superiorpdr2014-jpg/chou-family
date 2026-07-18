@@ -335,6 +335,17 @@ a { color: inherit; }
 
 .finder { max-width: 52rem; margin: 0 auto; }
 
+.finder-cam {
+  display: flex; align-items: center; justify-content: center; gap: .5rem;
+  width: 100%; padding: 1.1rem; font-size: 1.08rem; font-weight: 600;
+  background: var(--accent); color: #fff; border: none; border-radius: var(--radius);
+  cursor: pointer; box-shadow: 0 6px 18px rgba(154,91,61,.28);
+  transition: background .15s, transform .15s;
+}
+.finder-cam:hover { background: var(--accent-dark); transform: translateY(-1px); }
+.finder-or { display: flex; align-items: center; gap: .8rem; color: var(--ink-faint); margin: 1rem 0; font-size: .85rem; }
+.finder-or::before, .finder-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
 .dropzone {
   border: 2px dashed var(--line);
   border-radius: var(--radius);
