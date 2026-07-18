@@ -1,0 +1,13 @@
+{
+  "id": "1784347402103-wfdn1s",
+  "target": "album-20991231",
+  "targetName": "刪除一張照片",
+  "submittedBy": "自動測試",
+  "submittedAt": "2026-07-18 04:03",
+  "changes": {
+    "deletePhoto": {
+      "albumId": "20991231",
+      "name": "0001"
+    }
+  }
+}
