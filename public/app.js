@@ -340,7 +340,10 @@ function renderAlbum(id) {
           <h2>${esc(a.title)}</h2>
           <p>${a.count} 張照片</p>
         </div>
-        <a class="btn btn-sm" href="#/upload/${encodeURIComponent(a.id)}">＋ 加照片到這本</a>
+        <span style="display:flex; gap:.5rem; flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" id="album-rename">✎ 改名稱</button>
+          <a class="btn btn-sm" href="#/upload/${encodeURIComponent(a.id)}">＋ 加照片到這本</a>
+        </span>
       </div>
       <div class="grid" id="album-grid">
         ${a.photos.map((p, i) => `
@@ -354,6 +357,51 @@ function renderAlbum(id) {
   $('#album-grid').addEventListener('click', (e) => {
     const btn = e.target.closest('.tile');
     if (btn) openLightbox(a.photos.map((p) => p.i), +btn.dataset.i);
+  });
+  $('#album-rename').addEventListener('click', () => openAlbumRename(a));
+}
+
+/** 家人改相簿名稱（走待審流程） */
+function openAlbumRename(album) {
+  showFaceSheet(`
+    <h3>幫「${esc(album.title)}」改名</h3>
+    <p class="hint">送出後管理員看過核准才會更新。</p>
+    <div class="edit-grid" style="margin-top:.75rem">
+      <label class="fld"><span>新的相簿名稱</span>
+        <input class="input" id="ar-title" value="${esc(album.title)}" maxlength="30"></label>
+      <label class="fld"><span>你是誰？</span>
+        <input class="input" id="ar-by" placeholder="你的名字" value="${esc(localStorage.getItem('chou-name') || '')}"></label>
+      <label class="fld"><span>家族密碼</span>
+        <input class="input" id="ar-pw" type="password" value="${esc(localStorage.getItem('chou-pw') || '')}"></label>
+    </div>
+    <div style="display:flex; gap:.5rem; align-items:center; margin-top:1rem; flex-wrap:wrap">
+      <button class="btn" id="ar-send">送出</button>
+      <button class="btn btn-ghost" id="ar-cancel">取消</button>
+      <span class="muted" id="ar-msg"></span>
+    </div>`);
+  $('#ar-cancel').addEventListener('click', closeFaceSheet);
+  $('#ar-send').addEventListener('click', async () => {
+    const title = $('#ar-title').value.trim();
+    const by = $('#ar-by').value.trim();
+    const pw = $('#ar-pw').value;
+    if (!title) return toast('請填新名稱');
+    if (!by) return toast('請填你的名字');
+    if (!pw) return toast('請輸入家族密碼');
+    if (title === album.title) return toast('名稱沒有改變');
+    localStorage.setItem('chou-name', by);
+    localStorage.setItem('chou-pw', pw);
+    $('#ar-send').disabled = true; $('#ar-msg').textContent = '送出中…';
+    const fd = new FormData();
+    fd.append('password', pw); fd.append('submittedBy', by);
+    fd.append('albumId', album.id); fd.append('albumTitle', title);
+    try {
+      const r = await fetch('/api/propose', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '送出失敗');
+      showFaceSheet(`<h3>收到了 🙏</h3><p class="hint">改名已送出，管理員核准後就會更新。</p>
+        <div style="margin-top:1rem"><button class="btn" id="ar-ok">好</button></div>`);
+      $('#ar-ok').addEventListener('click', closeFaceSheet);
+    } catch (err) { $('#ar-send').disabled = false; $('#ar-msg').textContent = ''; toast(err.message, 5000); }
   });
 }
 
@@ -1174,6 +1222,7 @@ async function loadProposals() {
       }
       if (c.removePerson) rows.push(`🔴 <b>把這個人從族譜整個移除</b>`);
       if (c.tagRef) rows.push(`在照片上標記了一張<b>${esc(p.targetName || '')}</b>的臉（之後會自動認出他）`);
+      if (c.albumRename) rows.push(`相簿改名成「<b>${esc(c.albumRename)}</b>」`);
       return `
         <div class="panel" style="margin-bottom:1rem" data-id="${esc(p.id)}">
           <h3>${esc(p.targetName || p.target)}</h3>

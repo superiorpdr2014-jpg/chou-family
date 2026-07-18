@@ -73,10 +73,39 @@ export async function onRequestPost({ request, env }) {
       return json({ error: '密碼不對' }, 401);
     }
 
+    const submittedBy = cleanName(form.get('submittedBy')) || '家人';
+
+    // —— 相簿改名（沒有 person target，另外處理） ——
+    const albumId = String(form.get('albumId') || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 40);
+    const albumTitle = cleanName(form.get('albumTitle')).slice(0, 30);
+    if (albumId) {
+      if (!albumTitle) return json({ error: '請填新的相簿名稱' }, 400);
+      const rand = Math.random().toString(36).slice(2, 8);
+      const id = `${Date.now()}-${rand}`;
+      const proposal = {
+        id, target: 'album-' + albumId,
+        targetName: '相簿：' + albumTitle,
+        submittedBy,
+        submittedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+        changes: { albumId, albumRename: albumTitle },
+      };
+      const [owner, repo] = String(env.GH_REPO).split('/');
+      const branch = env.GH_BRANCH || 'main';
+      const ref = await gh(env, `/repos/${owner}/${repo}/git/ref/heads/${branch}`);
+      const baseCommit = await gh(env, `/repos/${owner}/${repo}/git/commits/${ref.object.sha}`);
+      const blob = await gh(env, `/repos/${owner}/${repo}/git/blobs`, 'POST',
+        { content: toBase64(new TextEncoder().encode(JSON.stringify(proposal, null, 2))), encoding: 'base64' });
+      const newTree = await gh(env, `/repos/${owner}/${repo}/git/trees`, 'POST',
+        { base_tree: baseCommit.tree.sha, tree: [{ path: `proposals/${id}.json`, mode: '100644', type: 'blob', sha: blob.sha }] });
+      const commit = await gh(env, `/repos/${owner}/${repo}/git/commits`, 'POST',
+        { message: `proposal: ${submittedBy} 提議相簿改名「${albumTitle}」 [skip ci]`, tree: newTree.sha, parents: [ref.object.sha] });
+      await gh(env, `/repos/${owner}/${repo}/git/refs/heads/${branch}`, 'PATCH', { sha: commit.sha });
+      return json({ ok: true, id });
+    }
+
     const target = String(form.get('target') || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 60);
     if (!target) return json({ error: '不知道要改誰' }, 400);
 
-    const submittedBy = cleanName(form.get('submittedBy')) || '家人';
     const changes = {};
     const name = cleanName(form.get('name'));
     if (name) changes.name = name;

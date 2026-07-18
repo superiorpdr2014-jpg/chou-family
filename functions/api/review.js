@@ -218,7 +218,21 @@ export async function onRequestPost({ request, env }) {
     const tree = [];
     let log = [];
 
-    if (action === 'approve') {
+    if (action === 'approve' && prop.changes && prop.changes.albumRename) {
+      // 相簿改名：改的是 albums.json 的 title，跟 people.json 無關
+      const af = await gh(env, `/repos/${owner}/${repo}/contents/public/data/albums.json?ref=${branch}`);
+      const albums = JSON.parse(b64ToText(af.content));
+      const al = (albums.albums || []).find((a) => a.id === prop.changes.albumId);
+      if (!al) return json({ error: '找不到這本相簿' }, 404);
+      const oldName = al.title;
+      al.title = prop.changes.albumRename;
+      log.push(`相簿「${oldName}」改名為「${al.title}」`);
+      tree.push({
+        path: 'public/data/albums.json', mode: '100644', type: 'blob',
+        sha: (await gh(env, `/repos/${owner}/${repo}/git/blobs`, 'POST',
+          { content: textToB64(JSON.stringify(albums) + '\n'), encoding: 'base64' })).sha,
+      });
+    } else if (action === 'approve') {
       const pf = await gh(env, `/repos/${owner}/${repo}/contents/public/data/people.json?ref=${branch}`);
       const data = JSON.parse(b64ToText(pf.content));
       log = applyProposal(data, prop);
