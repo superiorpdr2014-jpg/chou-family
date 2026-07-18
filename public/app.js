@@ -1288,7 +1288,7 @@ function fmtEventWhen(w) {
   let s = `${+y}/${+mo}/${+d}（${wd}）`;
   if (hh != null) {
     const H = +hh;
-    const ampm = H < 12 ? '上午' : (H < 18 ? '下午' : '晚上');
+    const ampm = H === 12 ? '中午' : H === 0 ? '凌晨' : H < 12 ? '上午' : H < 18 ? '下午' : '晚上';
     const h12 = H % 12 === 0 ? 12 : H % 12;
     s += ` ${ampm} ${h12}:${mm}`;
   }
