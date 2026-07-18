@@ -1356,6 +1356,34 @@ async function submitHouseholdRsvp(ev, people) {
   } catch (err) { toast(err.message, 4000); }
 }
 
+/** 管理員登入（給非待審頁的地方用，例如聚會頁要新增聚會） */
+function unlockAdmin(onOk) {
+  showFaceSheet(`
+    <h3>管理員登入</h3>
+    <p class="hint">輸入管理員密碼，就能新增與管理聚會。</p>
+    <div style="margin-top:.75rem"><input class="input" id="ua-pw" type="password" placeholder="管理員密碼"></div>
+    <div style="display:flex; gap:.5rem; align-items:center; margin-top:1rem">
+      <button class="btn" id="ua-go">登入</button>
+      <button class="btn btn-ghost" id="ua-cancel">取消</button>
+      <span class="muted" id="ua-msg"></span>
+    </div>`);
+  $('#ua-cancel').addEventListener('click', closeFaceSheet);
+  const go = async () => {
+    const pw = $('#ua-pw').value;
+    if (!pw) return;
+    $('#ua-go').disabled = true; $('#ua-msg').textContent = '確認中…';
+    try {
+      const r = await fetch('/api/review?password=' + encodeURIComponent(pw));
+      if (!r.ok) throw new Error('密碼不對');
+      sessionStorage.setItem('chou-admin', pw);
+      closeFaceSheet();
+      if (onOk) onOk();
+    } catch (e) { $('#ua-go').disabled = false; $('#ua-msg').textContent = ''; toast(e.message, 3000); }
+  };
+  $('#ua-go').addEventListener('click', go);
+  $('#ua-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+}
+
 async function renderBoard() {
   view().innerHTML = `<div class="wrap"><div class="loading"><span class="spinner"></span>載入中…</div></div>`;
   let data = { events: [] };
@@ -1394,9 +1422,12 @@ async function renderBoard() {
 
   view().innerHTML = `
     <div class="wrap">
-      <div class="section-head">
-        <h2>家族聚會</h2>
-        <p>聚餐、活動看這裡，順手回覆你會不會到。</p>
+      <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; flex-wrap:wrap">
+        <div>
+          <h2>家族聚會</h2>
+          <p>聚餐、活動看這裡，順手回覆你會不會到。</p>
+        </div>
+        ${isAdmin ? '' : '<button class="btn btn-ghost btn-sm" id="ev-admin">🔑 管理員新增聚會</button>'}
       </div>
       ${isAdmin ? `
         <div class="panel" style="margin-bottom:1.5rem">
@@ -1442,6 +1473,8 @@ async function renderBoard() {
       } catch (err) { toast(err.message, 4000); }
     }
   });
+
+  if (!isAdmin) $('#ev-admin').addEventListener('click', () => unlockAdmin(renderBoard));
 
   if (isAdmin) $('#ev-add').addEventListener('click', async () => {
     const title = $('#ev-title').value.trim();
