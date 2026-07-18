@@ -18068,7 +18068,9 @@
       "name": "王法安",
       "gender": "M",
       "note": "周月慧與王勇銘的兒子（小兒子）",
-      "spouse": [],
+      "spouse": [
+        "p-1784379658056-1"
+      ],
       "parents": [
         "zhou-yuehui",
         "wang-yongming"
@@ -23073,6 +23075,27 @@
         "zhou-yuezhi"
       ],
       "parents": [],
+      "refs": []
+    },
+    {
+      "id": "p-1784379658056-1",
+      "name": "王良雅",
+      "note": "王法安的配偶",
+      "spouse": [
+        "wang-faan"
+      ],
+      "parents": [],
+      "refs": []
+    },
+    {
+      "id": "p-1784379658056-2",
+      "name": "王植涵",
+      "note": "王法安的小孩",
+      "spouse": [],
+      "parents": [
+        "wang-faan",
+        "p-1784379658056-1"
+      ],
       "refs": []
     }
   ]
