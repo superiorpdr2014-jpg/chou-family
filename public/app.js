@@ -304,13 +304,7 @@ function renderHome() {
     </div>` : ''}
 
     <section class="film-band" aria-label="家族影片">
-      <div class="film-frame">
-        <iframe
-          src="https://www.youtube.com/embed/lb_ecsvOSOY?si=MkXOhMMKleau08JJ&start=57&autoplay=1&mute=1&loop=1&playlist=lb_ecsvOSOY&controls=0&showinfo=0&modestbranding=1&rel=0&playsinline=1&disablekb=1&fs=0"
-          title="周氏大家族影片" frameborder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-      </div>
+      <div class="film-frame"><div id="yt-film"></div></div>
       <div class="film-fade film-fade-top"></div>
       <div class="film-fade film-fade-bottom"></div>
     </section>
@@ -335,6 +329,44 @@ function renderHome() {
           </a>`).join('')}
       </div>
     </div>`;
+
+  mountFilmPlayer();
+}
+
+/*
+ * 首頁影片：用 YouTube IFrame API 播，讓「每次循環都從 0:57 開始」。
+ * 純 iframe 的 loop 一定從 0:00 起，做不到指定秒數循環，所以改用 API：
+ * 影片播完(ENDED) → seekTo(57) 再 play。靜音才能自動播放。
+ */
+const FILM_START = 57;
+function mountFilmPlayer() {
+  if (!document.getElementById('yt-film')) return;
+  const make = () => {
+    const host = document.getElementById('yt-film');
+    if (!host || !(window.YT && window.YT.Player)) return;
+    if (S.ytPlayer) { try { S.ytPlayer.destroy(); } catch (e) {} }
+    S.ytPlayer = new window.YT.Player('yt-film', {
+      videoId: 'lb_ecsvOSOY',
+      playerVars: {
+        autoplay: 1, mute: 1, controls: 0, start: FILM_START,
+        playsinline: 1, modestbranding: 1, rel: 0, disablekb: 1, fs: 0, showinfo: 0,
+      },
+      events: {
+        onReady: (e) => { e.target.mute(); e.target.seekTo(FILM_START, true); e.target.playVideo(); },
+        onStateChange: (e) => {
+          if (e.data === window.YT.PlayerState.ENDED) { e.target.seekTo(FILM_START, true); e.target.playVideo(); }
+        },
+      },
+    });
+  };
+  if (window.YT && window.YT.Player) { make(); return; }
+  // API 還沒載入：載一次，載好會呼叫 onYouTubeIframeAPIReady
+  window.onYouTubeIframeAPIReady = make;
+  if (!document.getElementById('yt-api')) {
+    const s = document.createElement('script');
+    s.id = 'yt-api'; s.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(s);
+  }
 }
 
 /* ============ 畫面：單一相簿 ============ */

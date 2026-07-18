@@ -165,12 +165,14 @@ a { color: inherit; }
   background: var(--paper);
 }
 .film-frame { position: absolute; inset: 0; }
+/* YT API 產生的 iframe 帶自己的 width/height 屬性，用 !important 蓋掉。
+   長條是滿版(100vw)，所以 100vw × 56.25vw(=16:9) 一定比帶高還高 → 上下裁掉、蓋滿。 */
 .film-frame iframe {
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 100%;
-  aspect-ratio: 16 / 9;   /* 高度 = 寬度 × 0.5625，比帶高還高 → 上下裁掉 */
+  width: 100vw !important;
+  height: 56.25vw !important;
   border: 0;
   pointer-events: none;   /* 純展示，避免點到 YouTube 介面 */
 }
@@ -182,9 +184,13 @@ a { color: inherit; }
 .people-banner { width: 100%; margin-bottom: clamp(1.25rem, 3vw, 2rem); }
 .people-banner > img {
   display: block; width: 100%;
-  height: clamp(170px, 27vw, 400px);
+  height: clamp(340px, 45vw, 740px);   /* 拉高，少切到人臉 */
   object-fit: cover;
-  object-position: center 60%;   /* 人臉在照片中下段，往下取才看得到大家 */
+  object-position: center 58%;   /* 人臉在照片中下段，往下取才看得到大家 */
+}
+/* 手機版：顯示整張照片，不裁切 */
+@media (max-width: 640px) {
+  .people-banner > img { height: auto; object-fit: initial; }
 }
 .people-banner-cap { text-align: center; padding: clamp(1rem, 2.5vw, 1.6rem) 1rem 0; }
 .people-banner-cap h2 {
