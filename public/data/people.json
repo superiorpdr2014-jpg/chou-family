@@ -4914,9 +4914,11 @@
     },
     {
       "id": "xu-ruiling",
-      "name": "許瑞玲",
+      "name": "許瑞琳",
       "note": "周月治的女兒",
-      "spouse": [],
+      "spouse": [
+        "p-1784332845912-1"
+      ],
       "parents": [
         "zhou-yuezhi"
       ],
@@ -8733,7 +8735,7 @@
     },
     {
       "id": "wang-xingwan",
-      "name": "王興萬",
+      "name": "王新萬",
       "note": "周秋月的先生",
       "spouse": [
         "zhou-qiuyue"
@@ -12824,7 +12826,7 @@
     },
     {
       "id": "zhou-yuemei-husband",
-      "name": "周月梅的老公",
+      "name": "李宗榮",
       "gender": "M",
       "note": "本名待補",
       "spouse": [
@@ -13151,6 +13153,38 @@
         "wang-jingru",
         "wang-jingru-husband"
       ],
+      "refs": []
+    },
+    {
+      "id": "p-1784297481434-1",
+      "name": "黃趫伊",
+      "note": "黃裕文的小孩",
+      "spouse": [],
+      "parents": [
+        "huang-yuwen",
+        "wu-jiayun"
+      ],
+      "refs": []
+    },
+    {
+      "id": "p-1784297405061-1",
+      "name": "黃品閎",
+      "note": "黃裕仁的小孩",
+      "spouse": [],
+      "parents": [
+        "huang-yuren",
+        "amber"
+      ],
+      "refs": []
+    },
+    {
+      "id": "p-1784332845912-1",
+      "name": "周宗賢",
+      "note": "許瑞玲的配偶",
+      "spouse": [
+        "xu-ruiling"
+      ],
+      "parents": [],
       "refs": []
     }
   ]
