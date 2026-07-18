@@ -1278,6 +1278,23 @@ async function submitEdit(person) {
 
 /* ============ 畫面：家族聚會公佈欄 ＋ 回覆出席 ============ */
 
+/** 把 datetime-local 值（2026-09-15T12:00）排成好看的中文；舊的自由文字照原樣顯示 */
+function fmtEventWhen(w) {
+  if (!w) return '';
+  const m = String(w).match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+  if (!m) return w;
+  const [, y, mo, d, hh, mm] = m;
+  const wd = '日一二三四五六'[new Date(+y, +mo - 1, +d).getDay()];
+  let s = `${+y}/${+mo}/${+d}（${wd}）`;
+  if (hh != null) {
+    const H = +hh;
+    const ampm = H < 12 ? '上午' : (H < 18 ? '下午' : '晚上');
+    const h12 = H % 12 === 0 ? 12 : H % 12;
+    s += ` ${ampm} ${h12}:${mm}`;
+  }
+  return s;
+}
+
 async function renderBoard() {
   view().innerHTML = `<div class="wrap"><div class="loading"><span class="spinner"></span>載入中…</div></div>`;
   let data = { events: [] };
@@ -1301,7 +1318,7 @@ async function renderBoard() {
           ${isAdmin ? `<button class="event-del" data-id="${esc(ev.id)}" title="刪除">🗑</button>` : ''}
         </div>
         <div class="event-meta">
-          ${ev.when ? `<span>🗓️ ${esc(ev.when)}</span>` : ''}
+          ${ev.when ? `<span>🗓️ ${esc(fmtEventWhen(ev.when))}</span>` : ''}
           ${ev.where ? `<span>📍 ${esc(ev.where)}</span>` : ''}
         </div>
         ${ev.note ? `<p class="event-note">${esc(ev.note)}</p>` : ''}
@@ -1325,7 +1342,7 @@ async function renderBoard() {
           <h3 style="margin:0 0 .6rem">新增一場聚會</h3>
           <div class="edit-grid">
             <label class="fld"><span>名稱</span><input class="input" id="ev-title" placeholder="例：中秋家族聚餐"></label>
-            <label class="fld"><span>時間</span><input class="input" id="ev-when" placeholder="例：9/15（日）中午 12:00"></label>
+            <label class="fld"><span>日期與時間</span><input class="input" id="ev-when" type="datetime-local"></label>
             <label class="fld"><span>地點</span><input class="input" id="ev-where" placeholder="例：樹林陶板屋"></label>
             <label class="fld"><span>備註（可留空）</span><input class="input" id="ev-note" placeholder="例：停車場在B2"></label>
           </div>
