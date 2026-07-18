@@ -75,19 +75,35 @@ export async function onRequestPost({ request, env }) {
 
     const submittedBy = cleanName(form.get('submittedBy')) || '家人';
 
-    // —— 相簿改名（沒有 person target，另外處理） ——
+    // —— 相簿類提案：改名 / 刪照片 / 刪整本（都沒有 person target，另外處理） ——
     const albumId = String(form.get('albumId') || '').replace(/[^a-zA-Z0-9一-鿿-]/g, '').slice(0, 60);
     const albumTitle = cleanName(form.get('albumTitle')).slice(0, 30);
+    const deletePhotoName = String(form.get('deletePhotoName') || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
+    const deleteAlbum = String(form.get('deleteAlbum') || '') === '1';
     if (albumId) {
-      if (!albumTitle) return json({ error: '請填新的相簿名稱' }, 400);
+      let changes, targetName, msgWord;
+      if (deleteAlbum) {
+        changes = { deleteAlbum: albumId };
+        targetName = '刪除整本相簿';
+        msgWord = '刪除整本相簿';
+      } else if (deletePhotoName) {
+        changes = { deletePhoto: { albumId, name: deletePhotoName } };
+        targetName = '刪除一張照片';
+        msgWord = '刪除照片';
+      } else {
+        if (!albumTitle) return json({ error: '請填新的相簿名稱' }, 400);
+        changes = { albumId, albumRename: albumTitle };
+        targetName = '相簿：' + albumTitle;
+        msgWord = '相簿改名「' + albumTitle + '」';
+      }
       const rand = Math.random().toString(36).slice(2, 8);
       const id = `${Date.now()}-${rand}`;
       const proposal = {
         id, target: 'album-' + albumId,
-        targetName: '相簿：' + albumTitle,
+        targetName,
         submittedBy,
         submittedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
-        changes: { albumId, albumRename: albumTitle },
+        changes,
       };
       const [owner, repo] = String(env.GH_REPO).split('/');
       const branch = env.GH_BRANCH || 'main';
@@ -98,7 +114,7 @@ export async function onRequestPost({ request, env }) {
       const newTree = await gh(env, `/repos/${owner}/${repo}/git/trees`, 'POST',
         { base_tree: baseCommit.tree.sha, tree: [{ path: `proposals/${id}.json`, mode: '100644', type: 'blob', sha: blob.sha }] });
       const commit = await gh(env, `/repos/${owner}/${repo}/git/commits`, 'POST',
-        { message: `proposal: ${submittedBy} 提議相簿改名「${albumTitle}」 [skip ci]`, tree: newTree.sha, parents: [ref.object.sha] });
+        { message: `proposal: ${submittedBy} 提議${msgWord} [skip ci]`, tree: newTree.sha, parents: [ref.object.sha] });
       await gh(env, `/repos/${owner}/${repo}/git/refs/heads/${branch}`, 'PATCH', { sha: commit.sha });
       return json({ ok: true, id });
     }

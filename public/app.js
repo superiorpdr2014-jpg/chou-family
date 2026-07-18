@@ -353,6 +353,7 @@ function renderAlbum(id) {
         <span style="display:flex; gap:.5rem; flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" id="album-rename">✎ 改名稱</button>
           <a class="btn btn-sm" href="#/upload/${encodeURIComponent(a.id)}">＋ 加照片到這本</a>
+          <button class="btn btn-ghost btn-sm" id="album-delete" style="color:#b3402f">🗑 申請刪除整本</button>
         </span>
       </div>
       <div class="grid" id="album-grid">
@@ -369,6 +370,46 @@ function renderAlbum(id) {
     if (btn) openLightbox(a.photos.map((p) => p.i), +btn.dataset.i);
   });
   $('#album-rename').addEventListener('click', () => openAlbumRename(a));
+  $('#album-delete').addEventListener('click', () => openAlbumDeleteRequest(a));
+}
+
+/** 家人申請刪除整本相簿（走管理員核准流程） */
+function openAlbumDeleteRequest(album) {
+  showFaceSheet(`
+    <h3>申請刪除整本「${esc(album.title)}」</h3>
+    <p class="hint">這會刪掉整本相簿共 ${album.count} 張照片。送出後管理員看過核准才會真的刪。</p>
+    <div class="edit-grid" style="margin-top:.75rem">
+      <label class="fld"><span>你是誰？</span>
+        <input class="input" id="ad-by" placeholder="你的名字" value="${esc(localStorage.getItem('chou-name') || '')}"></label>
+      <label class="fld"><span>家族密碼</span>
+        <input class="input" id="ad-pw" type="password" value="${esc(localStorage.getItem('chou-pw') || '')}"></label>
+    </div>
+    <div style="display:flex; gap:.5rem; align-items:center; margin-top:1rem; flex-wrap:wrap">
+      <button class="btn" id="ad-send">送出申請</button>
+      <button class="btn btn-ghost" id="ad-cancel">取消</button>
+      <span class="muted" id="ad-msg"></span>
+    </div>`);
+  $('#ad-cancel').addEventListener('click', closeFaceSheet);
+  $('#ad-send').addEventListener('click', async () => {
+    const by = $('#ad-by').value.trim();
+    const pw = $('#ad-pw').value;
+    if (!by) return toast('請填你的名字');
+    if (!pw) return toast('請輸入家族密碼');
+    localStorage.setItem('chou-name', by);
+    localStorage.setItem('chou-pw', pw);
+    $('#ad-send').disabled = true; $('#ad-msg').textContent = '送出中…';
+    const fd = new FormData();
+    fd.append('password', pw); fd.append('submittedBy', by);
+    fd.append('albumId', album.id); fd.append('deleteAlbum', '1');
+    try {
+      const r = await fetch('/api/propose', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '送出失敗');
+      showFaceSheet(`<h3>收到了 🙏</h3><p class="hint">刪除申請已送出，管理員核准後就會刪掉整本相簿。</p>
+        <div style="margin-top:1rem"><button class="btn" id="ad-ok">好</button></div>`);
+      $('#ad-ok').addEventListener('click', closeFaceSheet);
+    } catch (err) { $('#ad-send').disabled = false; $('#ad-msg').textContent = ''; toast(err.message, 5000); }
+  });
 }
 
 /** 家人改相簿名稱（走待審流程） */
@@ -1233,11 +1274,14 @@ async function loadProposals() {
       if (c.removePerson) rows.push(`🔴 <b>把這個人從族譜整個移除</b>`);
       if (c.tagRef) rows.push(`在照片上標記了一張<b>${esc(p.targetName || '')}</b>的臉（之後會自動認出他）`);
       if (c.albumRename) rows.push(`相簿改名成「<b>${esc(c.albumRename)}</b>」`);
+      if (c.deletePhoto) rows.push(`🔴 <b>刪除一張照片</b>（相簿 ${esc(c.deletePhoto.albumId)}）`);
+      if (c.deleteAlbum) rows.push(`🔴 <b>刪除整本相簿</b>（${esc(c.deleteAlbum)}）`);
       return `
         <div class="panel" style="margin-bottom:1rem" data-id="${esc(p.id)}">
           <h3>${esc(p.targetName || p.target)}</h3>
           <p class="hint">${esc(p.submittedBy)} 於 ${esc(p.submittedAt)} 提出</p>
           ${c.avatarImg ? `<img src="https://raw.githubusercontent.com/superiorpdr2014-jpg/chou-family/main/${esc(c.avatarImg)}" alt="" style="width:90px;height:90px;object-fit:cover;border-radius:50%;margin:.5rem 0;background:#eee">` : ''}
+          ${c.deletePhoto ? `<img src="photos/${esc(c.deletePhoto.albumId)}/t/${esc(c.deletePhoto.name)}.webp" alt="" style="width:110px;height:110px;object-fit:cover;border-radius:8px;margin:.5rem 0;background:#eee">` : ''}
           <ul style="margin:.5rem 0 1rem; padding-left:1.2rem">${rows.map((r) => `<li>${r}</li>`).join('')}</ul>
           <div style="display:flex; gap:.5rem; flex-wrap:wrap">
             <button class="btn btn-sm" data-act="approve">核准</button>
@@ -1252,7 +1296,7 @@ async function loadProposals() {
       const panel = btn.closest('[data-id]');
       const id = panel.dataset.id;
       const action = btn.dataset.act;
-      if (action === 'approve' && !confirm('確定要把這筆修正套用到族譜？')) return;
+      if (action === 'approve' && !confirm('確定要核准這筆？如果是刪除，照片刪掉就找不回來了。')) return;
       btn.disabled = true;
       try {
         const res = await fetch('/api/review', {
@@ -1448,42 +1492,51 @@ function closeLightbox() {
   document.body.style.overflow = '';
 }
 
-/** 管理員刪除當前這張照片 */
-async function deletePhoto(pi) {
+/** 申請刪除當前這張照片（走管理員核准流程） */
+function requestPhotoDelete(pi) {
   const photo = S.faces.photos[pi];
   if (!photo) return;
   const albumId = photo.a;
   const m = (photo.w || photo.t || '').match(/\/([^/]+)\.webp$/);
   const name = m ? m[1] : null;
   if (!name) return toast('無法辨識這張照片');
-  if (!confirm('確定要刪除這張照片嗎？刪了就找不回來了。')) return;
-  const pw = sessionStorage.getItem('chou-admin');
-  if (!pw) return toast('請先到「待審核」頁用管理員密碼登入');
-  const del = $('#lb-delete');
-  del.disabled = true; toast('刪除中…');
-  try {
-    const res = await fetch('/api/photo-delete', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ password: pw, albumId, name }),
-    });
-    const out = await res.json();
-    if (!res.ok) throw new Error(out.error || '刪除失敗');
-    // 本機先拿掉，畫面馬上更新（正式檔重新部署後就一致了）
-    const album = S.albums.albums.find((a) => a.id === albumId);
-    if (album) {
-      album.photos = album.photos.filter((p) => p.name !== name);
-      album.count = album.photos.length;
-    }
-    closeLightbox();
-    toast('已刪除。人臉索引會在一兩分鐘後一起更新。', 4500);
-    const hash = location.hash || '';
-    if (hash.includes('/album/')) renderAlbum(albumId);
-    else if (hash.includes('/find') || hash.includes('/people')) { /* 這些頁不重畫，避免動到比對結果 */ }
-  } catch (err) {
-    toast(err.message, 5000);
-  } finally {
-    del.disabled = false;
-  }
+  const album = S.albums.albums.find((a) => a.id === albumId);
+  const albumTitle = album ? album.title : '';
+  showFaceSheet(`
+    <h3>申請刪除這張照片</h3>
+    <p class="hint">來自「${esc(albumTitle)}」。送出後管理員看過核准才會真的刪掉。</p>
+    <div class="edit-grid" style="margin-top:.75rem">
+      <label class="fld"><span>你是誰？</span>
+        <input class="input" id="pd-by" placeholder="你的名字" value="${esc(localStorage.getItem('chou-name') || '')}"></label>
+      <label class="fld"><span>家族密碼</span>
+        <input class="input" id="pd-pw" type="password" value="${esc(localStorage.getItem('chou-pw') || '')}"></label>
+    </div>
+    <div style="display:flex; gap:.5rem; align-items:center; margin-top:1rem; flex-wrap:wrap">
+      <button class="btn" id="pd-send">送出申請</button>
+      <button class="btn btn-ghost" id="pd-cancel">取消</button>
+      <span class="muted" id="pd-msg"></span>
+    </div>`);
+  $('#pd-cancel').addEventListener('click', closeFaceSheet);
+  $('#pd-send').addEventListener('click', async () => {
+    const by = $('#pd-by').value.trim();
+    const pw = $('#pd-pw').value;
+    if (!by) return toast('請填你的名字');
+    if (!pw) return toast('請輸入家族密碼');
+    localStorage.setItem('chou-name', by);
+    localStorage.setItem('chou-pw', pw);
+    $('#pd-send').disabled = true; $('#pd-msg').textContent = '送出中…';
+    const fd = new FormData();
+    fd.append('password', pw); fd.append('submittedBy', by);
+    fd.append('albumId', albumId); fd.append('deletePhotoName', name);
+    try {
+      const r = await fetch('/api/propose', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '送出失敗');
+      showFaceSheet(`<h3>收到了 🙏</h3><p class="hint">刪除申請已送出，管理員核准後就會刪掉。</p>
+        <div style="margin-top:1rem"><button class="btn" id="pd-ok">好</button></div>`);
+      $('#pd-ok').addEventListener('click', closeFaceSheet);
+    } catch (err) { $('#pd-send').disabled = false; $('#pd-msg').textContent = ''; toast(err.message, 5000); }
+  });
 }
 
 function showPhoto() {
@@ -1501,11 +1554,9 @@ function showPhoto() {
   dl.href = photo.o || photo.w;
   dl.setAttribute('download', photo.src || 'photo.jpg');
 
-  // 刪除鈕只給管理員（審核頁登入過、sessionStorage 有管理員密碼）
+  // 申請刪除這張照片（送出後要管理員核准才會真的刪）
   const del = $('#lb-delete');
-  const isAdmin = !!sessionStorage.getItem('chou-admin');
-  del.hidden = !isAdmin;
-  del.onclick = isAdmin ? () => deletePhoto(pi) : null;
+  del.onclick = () => requestPhotoDelete(pi);
 
   $('#lb-faces').innerHTML = '';
   img.onload = () => drawFaceBoxes(pi);

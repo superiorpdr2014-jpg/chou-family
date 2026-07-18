@@ -218,20 +218,63 @@ export async function onRequestPost({ request, env }) {
     const tree = [];
     let log = [];
 
-    if (action === 'approve' && prop.changes && prop.changes.albumRename) {
-      // 相簿改名：改的是 albums.json 的 title，跟 people.json 無關
+    const c0 = prop.changes || {};
+    const isAlbumOp = c0.albumRename || c0.deletePhoto || c0.deleteAlbum;
+
+    if (action === 'approve' && isAlbumOp) {
+      // 相簿類操作：改的是 albums.json（＋刪圖檔），跟 people.json 無關
       const af = await gh(env, `/repos/${owner}/${repo}/contents/public/data/albums.json?ref=${branch}`);
       const albums = JSON.parse(b64ToText(af.content));
-      const al = (albums.albums || []).find((a) => a.id === prop.changes.albumId);
-      if (!al) return json({ error: '找不到這本相簿' }, 404);
-      const oldName = al.title;
-      al.title = prop.changes.albumRename;
-      log.push(`相簿「${oldName}」改名為「${al.title}」`);
+      const delFile = (rel) => tree.push({ path: 'public/' + String(rel).replace(/^public\//, ''), mode: '100644', type: 'blob', sha: null });
+      let needRebuild = false;
+
+      if (c0.albumRename) {
+        const al = (albums.albums || []).find((a) => a.id === c0.albumId);
+        if (!al) return json({ error: '找不到這本相簿' }, 404);
+        const oldName = al.title;
+        al.title = c0.albumRename;
+        log.push(`相簿「${oldName}」改名為「${al.title}」`);
+
+      } else if (c0.deletePhoto) {
+        const al = (albums.albums || []).find((a) => a.id === c0.deletePhoto.albumId);
+        if (!al) return json({ error: '找不到這本相簿' }, 404);
+        const photo = (al.photos || []).find((p) => p.name === c0.deletePhoto.name);
+        if (!photo) return json({ error: '這張照片已經不在了' }, 404);
+        [photo.o, photo.w, photo.t].filter(Boolean).forEach(delFile);
+        al.photos = al.photos.filter((p) => p.name !== c0.deletePhoto.name);
+        al.count = al.photos.length;
+        let cover = al.photos[0];
+        for (const p of al.photos) if ((p.nf || 0) > (cover ? cover.nf || 0 : 0)) cover = p;
+        al.cover = cover ? cover.t : null;
+        if (!al.photos.length) albums.albums = albums.albums.filter((a) => a.id !== al.id);
+        log.push(`刪除相簿「${al.title}」的一張照片`);
+        needRebuild = true;
+
+      } else if (c0.deleteAlbum) {
+        const al = (albums.albums || []).find((a) => a.id === c0.deleteAlbum);
+        if (!al) return json({ error: '這本相簿已經不在了' }, 404);
+        for (const p of al.photos || []) [p.o, p.w, p.t].filter(Boolean).forEach(delFile);
+        albums.albums = albums.albums.filter((a) => a.id !== al.id);
+        log.push(`刪除整本相簿「${al.title}」（${(al.photos || []).length} 張）`);
+        needRebuild = true;
+      }
+
       tree.push({
         path: 'public/data/albums.json', mode: '100644', type: 'blob',
         sha: (await gh(env, `/repos/${owner}/${repo}/git/blobs`, 'POST',
           { content: textToB64(JSON.stringify(albums) + '\n'), encoding: 'base64' })).sha,
       });
+
+      // 刪照片/相簿後，碰一下 incoming/ 觸發 ingest 重建 faces.json/faces.bin
+      // （把被刪照片的人臉特徵也清掉，否則「找出我的照片」還會比對到已刪的照片、縮圖破圖）。
+      // 用這招而不是 workflow_dispatch：只需要 contents 權限，權杖一定有。
+      if (needRebuild) {
+        tree.push({
+          path: 'incoming/.rebuild', mode: '100644', type: 'blob',
+          sha: (await gh(env, `/repos/${owner}/${repo}/git/blobs`, 'POST',
+            { content: textToB64('rebuild ' + Date.now() + '\n'), encoding: 'base64' })).sha,
+        });
+      }
     } else if (action === 'approve') {
       const pf = await gh(env, `/repos/${owner}/${repo}/contents/public/data/people.json?ref=${branch}`);
       const data = JSON.parse(b64ToText(pf.content));
