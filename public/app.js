@@ -894,12 +894,24 @@ function setupAvatarCrop(file) {
     const stage = $('#crop-stage');
     const cbox = $('#crop-box');
     const handle = cbox.querySelector('.crop-handle');
+    const imgTag = $('#crop-img');
 
-    // 等圖片排版好才知道實際顯示尺寸
-    requestAnimationFrame(() => {
-      const iw = $('#crop-img').clientWidth;
-      const ih = $('#crop-img').clientHeight;
-      stage.style.height = ih + 'px';
+    /*
+     * 手機上圖片排版慢，requestAnimationFrame 觸發時 clientHeight 常常還是 0，
+     * 之前用 stage.style.height=0 把整個裁切區壓沒了（照片不見）。
+     * 改成：不強制 stage 高度（讓圖片自然撐開），而且等圖片真的有尺寸了才算框，
+     * 沒尺寸就重試（img 的 onload 或輪詢，最多等 2 秒）。
+     */
+    const startInit = (tries) => {
+      const iw = imgTag.clientWidth;
+      const ih = imgTag.clientHeight;
+      if ((!iw || !ih) && tries < 40) { requestAnimationFrame(() => startInit(tries + 1)); return; }
+      initBox(iw || 1, ih || 1);
+    };
+    imgTag.addEventListener('load', () => startInit(0));
+    if (imgTag.complete) startInit(0);
+
+    function initBox(iw, ih) {
       // 預設方框：置中、邊長取短邊的 60%
       let size = Math.round(Math.min(iw, ih) * 0.6);
       let x = Math.round((iw - size) / 2);
@@ -956,7 +968,7 @@ function setupAvatarCrop(file) {
         stage.addEventListener('pointerup', onUp);
         stage.addEventListener('pointercancel', onUp);
       });
-    });
+    }
   }).catch(() => { wrap.innerHTML = `<p class="hint">照片讀取失敗，換一張試試。</p>`; });
 }
 
