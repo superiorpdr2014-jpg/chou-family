@@ -178,6 +178,24 @@ a { color: inherit; }
 .film-fade-top { top: 0; background: linear-gradient(to bottom, var(--paper) 0%, rgba(250,247,242,.6) 45%, rgba(250,247,242,0) 100%); }
 .film-fade-bottom { bottom: 0; background: linear-gradient(to top, var(--paper) 0%, rgba(250,247,242,.6) 45%, rgba(250,247,242,0) 100%); }
 
+/* ---------- 家族成員頁 BANNER（橫式長條大合照，標題在下方） ---------- */
+.people-banner { width: 100%; margin-bottom: clamp(1.25rem, 3vw, 2rem); }
+.people-banner > img {
+  display: block; width: 100%;
+  height: clamp(170px, 27vw, 400px);
+  object-fit: cover;
+  object-position: center 60%;   /* 人臉在照片中下段，往下取才看得到大家 */
+}
+.people-banner-cap { text-align: center; padding: clamp(1rem, 2.5vw, 1.6rem) 1rem 0; }
+.people-banner-cap h2 {
+  font-family: var(--serif); font-weight: 700;
+  font-size: clamp(1.7rem, 4.5vw, 2.6rem);
+  color: var(--ink); margin: 0;
+}
+.people-banner-cap p { color: var(--ink-faint); margin: .35rem 0 0; }
+
+/* ---------- 相簿列表 ---------- */
+
 /* ---------- 相簿列表 ---------- */
 
 .albums { display: grid; gap: clamp(1rem, 2.5vw, 1.75rem); grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr)); }

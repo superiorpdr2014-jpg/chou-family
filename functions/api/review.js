@@ -46,6 +46,8 @@ const textToB64 = (t) => {
   return btoa(bin);
 };
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 function repoOf(env) {
   const [owner, repo] = String(env.GH_REPO).split('/');
   return { owner, repo, branch: env.GH_BRANCH || 'main' };
@@ -211,15 +213,37 @@ export async function onRequestPost({ request, env }) {
     if (!propFile) return json({ error: '找不到這個提案（可能已經處理過了）' }, 404);
     const prop = JSON.parse(b64ToText(propFile.content));
 
+    const c0 = prop.changes || {};
+    const isAlbumOp = c0.albumRename || c0.deletePhoto || c0.deleteAlbum;
+
+    /*
+     * 每次嘗試都重新讀最新的 main（ref + 資料檔），在最新狀態上疊修改再 push。
+     * 為什麼要重試：核准刪照片會碰 incoming/.rebuild → 觸發 ingest 機器人 commit 回 main，
+     * 如果我們用舊的 base SHA 去 PATCH，GitHub 會回 422「not a fast forward」。
+     * 重讀最新 base 再 push 就能避開這個競態（家人同時操作時也一樣安全）。
+     */
+    let log = [];
+    let lastErr;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        log = await applyAndCommit();
+        return json({ ok: true, action, log });
+      } catch (e) {
+        lastErr = e;
+        const msg = String(e && e.message || e);
+        if (/not a fast forward|\b422\b/i.test(msg)) { await sleep(300 + attempt * 250); continue; }
+        throw e;
+      }
+    }
+    throw lastErr;
+
+    async function applyAndCommit() {
     const ref = await gh(env, `/repos/${owner}/${repo}/git/ref/heads/${branch}`);
     const baseSha = ref.object.sha;
     const baseCommit = await gh(env, `/repos/${owner}/${repo}/git/commits/${baseSha}`);
 
     const tree = [];
     let log = [];
-
-    const c0 = prop.changes || {};
-    const isAlbumOp = c0.albumRename || c0.deletePhoto || c0.deleteAlbum;
 
     if (action === 'approve' && isAlbumOp) {
       // 相簿類操作：改的是 albums.json（＋刪圖檔），跟 people.json 無關
@@ -323,7 +347,8 @@ export async function onRequestPost({ request, env }) {
     });
     await gh(env, `/repos/${owner}/${repo}/git/refs/heads/${branch}`, 'PATCH', { sha: commit.sha });
 
-    return json({ ok: true, action, log });
+    return log;
+    } // end applyAndCommit
   } catch (err) {
     console.error(err);
     return json({ error: String(err.message || err).slice(0, 200) }, 500);

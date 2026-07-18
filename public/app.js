@@ -306,8 +306,10 @@ function renderHome() {
     <section class="film-band" aria-label="家族影片">
       <div class="film-frame">
         <iframe
-          src="https://www.youtube-nocookie.com/embed/lb_ecsvOSOY?autoplay=1&mute=1&loop=1&playlist=lb_ecsvOSOY&controls=0&showinfo=0&modestbranding=1&rel=0&playsinline=1&disablekb=1&fs=0"
-          title="周氏大家族影片" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+          src="https://www.youtube.com/embed/lb_ecsvOSOY?si=b2F23mGfUhH6KFlV&autoplay=1&mute=1&loop=1&playlist=lb_ecsvOSOY&controls=0&showinfo=0&modestbranding=1&rel=0&playsinline=1&disablekb=1&fs=0"
+          title="周氏大家族影片" frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
       </div>
       <div class="film-fade film-fade-top"></div>
       <div class="film-fade film-fade-bottom"></div>
@@ -777,11 +779,14 @@ function renderTree() {
   const orphans = S.people.filter((p) => !seen.has(p.id));
 
   view().innerHTML = `
-    <div class="wrap">
-      <div class="section-head">
+    <section class="people-banner">
+      <img src="people-banner.jpg" alt="周氏大家族大合照" loading="eager">
+      <div class="people-banner-cap">
         <h2>家族成員</h2>
         <p>${S.people.length} 位家人 · 點任何一個人看他的照片</p>
       </div>
+    </section>
+    <div class="wrap">
       <div class="tree-scroll">
         <div class="tree">${trees.join('')}</div>
       </div>
