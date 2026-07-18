@@ -1370,16 +1370,17 @@ function openHouseholdRsvp(ev) {
   const unit = S.me ? familyUnitOf(S.me) : null;
   if (!unit) { submitHouseholdRsvp(ev, { [S.me || '我']: 'yes' }); return; }  // 族譜找不到就只設自己
   const rsvps = ev.rsvps || {};
+  // 預設「全家都到」＝家人先打勾（除非之前已明確回覆不克）；沒來的人再取消勾選就好
   const row = (n, locked) => `
     <label class="hh-row">
-      <input type="checkbox" data-name="${esc(n)}" ${locked ? 'checked disabled' : (rsvps[n] === 'yes' ? 'checked' : '')}>
+      <input type="checkbox" data-name="${esc(n)}" ${locked ? 'checked disabled' : (rsvps[n] === 'no' ? '' : 'checked')}>
       <span>${esc(n)}</span>${locked ? '<em>你</em>' : ''}
     </label>`;
   const group = (title, names) => names.length ? `<div class="hh-title">${title}</div>${names.map((n) => row(n, false)).join('')}` : '';
 
   showFaceSheet(`
-    <h3>「${esc(ev.title)}」還有誰一起來？</h3>
-    <p class="hint">幫家裡的長輩和小孩一起勾選，他們就不用自己登入了。</p>
+    <h3>「${esc(ev.title)}」全家誰會到？</h3>
+    <p class="hint">預設<b>全家都會到</b>（幫長輩、小孩一起回覆，不用各自登入）。<br>有人不克出席的話，把他取消勾選就好。</p>
     <div class="hh-list">
       ${row(unit.self, true)}
       ${group('另一半', unit.spouse)}
