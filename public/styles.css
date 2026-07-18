@@ -825,6 +825,18 @@ body.locked .topbar, body.locked .footer, body.locked #view { display: none; }
 .rsvp-tally { font-size: .88rem; color: var(--ink-faint); }
 .rsvp-tally b { color: var(--ink); }
 
+/* 家人動態記錄（後台） */
+.log-controls { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+.log-controls .input { width: auto; min-width: 10rem; }
+.log-sys { font-size: .88rem; color: var(--ink-soft); display: flex; align-items: center; gap: .35rem; cursor: pointer; }
+.log-day { font-size: .8rem; letter-spacing: .06em; color: var(--ink-faint); margin: 1.2rem 0 .4rem; padding-bottom: .3rem; border-bottom: 1px solid var(--line); }
+.log-row { display: flex; align-items: baseline; gap: .7rem; padding: .5rem .2rem; }
+.log-row.sys { opacity: .55; }
+.log-icon { flex: 0 0 auto; font-size: 1.05rem; line-height: 1.4; }
+.log-text { flex: 1; color: var(--ink); word-break: break-word; }
+.log-text b { color: var(--accent-dark); }
+.log-time { flex: 0 0 auto; font-size: .8rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
 /* 幫全家勾選出席 */
 .hh-list { margin: .5rem 0 .25rem; max-height: 50vh; overflow-y: auto; }
 .hh-title { font-size: .8rem; color: var(--ink-faint); margin: .8rem 0 .3rem; letter-spacing: .05em; }

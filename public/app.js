@@ -1595,15 +1595,110 @@ function renderIdentify() {
   }, 30);
 }
 
+/* ============ 畫面：家人動態記錄（後台，只有管理員） ============ */
+
+function renderActivity() {
+  view().innerHTML = `
+    <div class="wrap">
+      <div class="finder">
+        <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; flex-wrap:wrap">
+          <div>
+            <h2>家人動態記錄</h2>
+            <p>誰標了人臉、改了名字、加了配偶小孩、按了愛心、回覆聚會…都在這。</p>
+          </div>
+          <a class="btn btn-ghost btn-sm" href="#/review">待審核提案 →</a>
+        </div>
+        <div class="panel">
+          <div class="field">
+            <input class="input" id="lg-pw" type="password" placeholder="管理員密碼"
+                   value="${esc(sessionStorage.getItem('chou-admin') || '')}">
+            <button class="btn" id="lg-load">看動態</button>
+          </div>
+        </div>
+        <div id="lg-list" style="margin-top:1.5rem"></div>
+      </div>
+    </div>`;
+  $('#lg-load').addEventListener('click', loadActivity);
+  if (sessionStorage.getItem('chou-admin')) loadActivity();
+}
+
+let _activityRaw = [];
+async function loadActivity() {
+  const pw = $('#lg-pw').value;
+  if (!pw) return toast('請輸入管理員密碼');
+  const box = $('#lg-list');
+  box.innerHTML = `<div class="loading"><span class="spinner"></span>載入中…</div>`;
+  try {
+    const res = await fetch('/api/activity?password=' + encodeURIComponent(pw));
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error || '載入失敗');
+    sessionStorage.setItem('chou-admin', pw);
+    _activityRaw = out.items || [];
+    drawActivity();
+  } catch (err) { box.innerHTML = `<div class="empty"><h3>${esc(err.message)}</h3></div>`; }
+}
+
+function drawActivity() {
+  const box = $('#lg-list');
+  const people = [...new Set(_activityRaw.filter((a) => a.who && !a.system).map((a) => a.who))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+  const hideSys = localStorage.getItem('chou-log-hidesys') !== '0';
+  const who = box.dataset.who || '';
+  let items = _activityRaw;
+  if (hideSys) items = items.filter((a) => !a.system);
+  if (who) items = items.filter((a) => a.who === who);
+
+  const fmt = (iso) => {
+    const d = new Date(iso);
+    const day = `${d.getMonth() + 1}/${d.getDate()}`;
+    const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const wd = '日一二三四五六'[d.getDay()];
+    return { day: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}（${wd}）`, dayShort: day, hm };
+  };
+
+  // 依日期分組
+  const groups = [];
+  let cur = null;
+  for (const a of items) {
+    const f = fmt(a.date);
+    if (!cur || cur.day !== f.day) { cur = { day: f.day, rows: [] }; groups.push(cur); }
+    cur.rows.push({ ...a, hm: f.hm });
+  }
+
+  box.innerHTML = `
+    <div class="log-controls">
+      <select class="input" id="lg-who">
+        <option value="">全部家人</option>
+        ${people.map((p) => `<option value="${esc(p)}" ${p === who ? 'selected' : ''}>${esc(p)}</option>`).join('')}
+      </select>
+      <label class="log-sys"><input type="checkbox" id="lg-hidesys" ${hideSys ? 'checked' : ''}> 隱藏系統動作</label>
+    </div>
+    ${items.length ? groups.map((g) => `
+      <div class="log-day">${esc(g.day)}</div>
+      ${g.rows.map((r) => `
+        <div class="log-row ${r.system ? 'sys' : ''}">
+          <span class="log-icon">${r.icon}</span>
+          <span class="log-text">${r.who ? `<b>${esc(r.who)}</b> ` : ''}${esc(r.text)}</span>
+          <span class="log-time">${r.hm}</span>
+        </div>`).join('')}
+    `).join('') : '<div class="empty"><h3>沒有符合的動態</h3></div>'}
+    <p class="muted" style="margin-top:1rem; font-size:.8rem">顯示最近 100 筆動作。</p>`;
+
+  $('#lg-who').addEventListener('change', (e) => { box.dataset.who = e.target.value; drawActivity(); });
+  $('#lg-hidesys').addEventListener('change', (e) => { localStorage.setItem('chou-log-hidesys', e.target.checked ? '1' : '0'); drawActivity(); });
+}
+
 /* ============ 畫面：待審清單（只有 Jay 用） ============ */
 
 function renderReview() {
   view().innerHTML = `
     <div class="wrap">
       <div class="finder">
-        <div class="section-head">
-          <h2>待審的修正</h2>
-          <p>家人提出的族譜修正，你看過按核准才會更新到族譜上。</p>
+        <div class="section-head" style="display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; flex-wrap:wrap">
+          <div>
+            <h2>待審的修正</h2>
+            <p>家人提出的族譜修正，你看過按核准才會更新到族譜上。</p>
+          </div>
+          <a class="btn btn-ghost btn-sm" href="#/log">📋 家人動態記錄 →</a>
         </div>
         <div class="panel">
           <div class="field">
@@ -2284,6 +2379,7 @@ function route() {
   if (page === 'board') return renderBoard();
   if (page === 'identify') return renderIdentify();
   if (page === 'review') return renderReview();
+  if (page === 'log' || page === 'admin') return renderActivity();
   if (page === 'person' && arg) return renderPerson(decodeURIComponent(arg));
   renderNotFound();
 }
