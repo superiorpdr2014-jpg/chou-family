@@ -306,7 +306,7 @@ function renderHome() {
     <section class="film-band" aria-label="家族影片">
       <div class="film-frame">
         <iframe
-          src="https://www.youtube.com/embed/lb_ecsvOSOY?si=b2F23mGfUhH6KFlV&autoplay=1&mute=1&loop=1&playlist=lb_ecsvOSOY&controls=0&showinfo=0&modestbranding=1&rel=0&playsinline=1&disablekb=1&fs=0"
+          src="https://www.youtube.com/embed/lb_ecsvOSOY?si=MkXOhMMKleau08JJ&start=57&autoplay=1&mute=1&loop=1&playlist=lb_ecsvOSOY&controls=0&showinfo=0&modestbranding=1&rel=0&playsinline=1&disablekb=1&fs=0"
           title="周氏大家族影片" frameborder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
