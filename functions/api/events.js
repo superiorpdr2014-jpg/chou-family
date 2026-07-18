@@ -50,6 +50,24 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const clean = (s) => String(s || '').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '').trim();
 function repoOf(env) { const [owner, repo] = String(env.GH_REPO).split('/'); return { owner, repo, branch: env.GH_BRANCH || 'main' }; }
 
+/*
+ * 一個人只能幫「自己＋族譜上的直系（父母/配偶/子女）」回覆出席。
+ * 這樣長輩/小孩不用自己登入，但也不能亂設無關的人。
+ */
+async function allowedRelatives(env, who) {
+  const { owner, repo, branch } = repoOf(env);
+  const f = await gh(env, `/repos/${owner}/${repo}/contents/public/data/people.json?ref=${branch}`);
+  const people = (f ? JSON.parse(b64ToText(f.content)) : {}).people || [];
+  const set = new Set([who]);
+  const me = people.find((p) => p.name === who);
+  if (!me) return set;
+  const byId = new Map(people.map((p) => [p.id, p]));
+  for (const id of (me.parents || [])) { const p = byId.get(id); if (p) set.add(p.name); }
+  for (const id of (me.spouse || [])) { const p = byId.get(id); if (p) set.add(p.name); }
+  for (const p of people) if ((p.parents || []).includes(me.id)) set.add(p.name);
+  return set;
+}
+
 export async function onRequestGet({ request, env }) {
   if (!(await readSession(request, env))) return json({ error: 'need login' }, 401);
   try {
@@ -71,6 +89,10 @@ export async function onRequestPost({ request, env }) {
     const body = await request.json();
     const action = String(body.action || '');
     const isAdmin = body.adminPassword && safeEqual(String(body.adminPassword), String(env.ADMIN_PASSWORD));
+
+    // 批次回覆（含家人）先算好「可代填名單」，迴圈外只算一次
+    const allowed = (action === 'rsvp' && body.people && typeof body.people === 'object')
+      ? await allowedRelatives(env, who) : null;
 
     const { owner, repo, branch } = repoOf(env);
     let result, lastErr;
@@ -103,11 +125,23 @@ export async function onRequestPost({ request, env }) {
         } else if (action === 'rsvp') {
           const ev = data.events.find((e) => e.id === String(body.id || ''));
           if (!ev) return json({ error: '這個聚會不在了' }, 404);
-          const status = ['yes', 'no', 'maybe'].includes(body.status) ? body.status : null;
           ev.rsvps = ev.rsvps || {};
-          if (status) ev.rsvps[who] = status; else delete ev.rsvps[who];
-          result = { id: ev.id, status };
-          msg = `events: ${who} 回覆出席 [skip ci]`;
+          if (allowed) {
+            // 批次：自己＋直系家人，只套用在可代填名單內的人
+            for (const [name, st] of Object.entries(body.people)) {
+              if (!allowed.has(name)) continue;
+              if (['yes', 'no', 'maybe'].includes(st)) ev.rsvps[name] = st;
+              else delete ev.rsvps[name];
+            }
+            ev.rsvps[who] = ['yes', 'no', 'maybe'].includes(body.people[who]) ? body.people[who] : 'yes';
+            result = { rsvps: ev.rsvps };
+            msg = `events: ${who} 回覆出席(含家人) [skip ci]`;
+          } else {
+            const status = ['yes', 'no', 'maybe'].includes(body.status) ? body.status : null;
+            if (status) ev.rsvps[who] = status; else delete ev.rsvps[who];
+            result = { id: ev.id, status, rsvps: ev.rsvps };
+            msg = `events: ${who} 回覆出席 [skip ci]`;
+          }
         } else if (action === 'delete') {
           if (!isAdmin) return json({ error: '只有管理員能刪除聚會' }, 403);
           const before = data.events.length;

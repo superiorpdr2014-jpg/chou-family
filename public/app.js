@@ -1295,6 +1295,67 @@ function fmtEventWhen(w) {
   return s;
 }
 
+/** 從族譜找出「我」這一戶：自己＋配偶＋上一代（父母）＋下一代（子女） */
+function familyUnitOf(name) {
+  const me = S.people.find((p) => p.name === name);
+  if (!me) return null;
+  const byId = new Map(S.people.map((p) => [p.id, p]));
+  const nm = (id) => (byId.get(id) || {}).name;
+  return {
+    self: me.name,
+    spouse: (me.spouse || []).map(nm).filter(Boolean),
+    parents: (me.parents || []).map(nm).filter(Boolean),
+    children: S.people.filter((p) => (p.parents || []).includes(me.id)).map((p) => p.name),
+  };
+}
+
+/** 會到 → 跳出「還有誰一起來」，幫家裡長輩/小孩一起勾（他們不用自己登入） */
+function openHouseholdRsvp(ev) {
+  const unit = S.me ? familyUnitOf(S.me) : null;
+  if (!unit) { submitHouseholdRsvp(ev, { [S.me || '我']: 'yes' }); return; }  // 族譜找不到就只設自己
+  const rsvps = ev.rsvps || {};
+  const row = (n, locked) => `
+    <label class="hh-row">
+      <input type="checkbox" data-name="${esc(n)}" ${locked ? 'checked disabled' : (rsvps[n] === 'yes' ? 'checked' : '')}>
+      <span>${esc(n)}</span>${locked ? '<em>你</em>' : ''}
+    </label>`;
+  const group = (title, names) => names.length ? `<div class="hh-title">${title}</div>${names.map((n) => row(n, false)).join('')}` : '';
+
+  showFaceSheet(`
+    <h3>「${esc(ev.title)}」還有誰一起來？</h3>
+    <p class="hint">幫家裡的長輩和小孩一起勾選，他們就不用自己登入了。</p>
+    <div class="hh-list">
+      ${row(unit.self, true)}
+      ${group('另一半', unit.spouse)}
+      ${group('上一代（父母）', unit.parents)}
+      ${group('下一代（子女）', unit.children)}
+    </div>
+    <div style="display:flex; gap:.5rem; margin-top:1rem">
+      <button class="btn" id="hh-send">確認會到</button>
+      <button class="btn btn-ghost" id="hh-cancel">取消</button>
+    </div>`);
+  $('#hh-cancel').addEventListener('click', closeFaceSheet);
+  $('#hh-send').addEventListener('click', () => {
+    const people = { [unit.self]: 'yes' };
+    document.querySelectorAll('.hh-list input[data-name]').forEach((cb) => {
+      if (cb.disabled) return;
+      people[cb.dataset.name] = cb.checked ? 'yes' : '__none__';
+    });
+    submitHouseholdRsvp(ev, people);
+  });
+}
+
+async function submitHouseholdRsvp(ev, people) {
+  try {
+    const r = await fetch('/api/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'rsvp', id: ev.id, people }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || '失敗');
+    ev.rsvps = d.rsvps || ev.rsvps;
+    closeFaceSheet();
+    renderBoard();
+  } catch (err) { toast(err.message, 4000); }
+}
+
 async function renderBoard() {
   view().innerHTML = `<div class="wrap"><div class="loading"><span class="spinner"></span>載入中…</div></div>`;
   let data = { events: [] };
@@ -1358,15 +1419,16 @@ async function renderBoard() {
     const rb = e.target.closest('.rsvp-btn');
     const db = e.target.closest('.event-del');
     if (rb) {
-      const id = rb.dataset.id;
-      const ev = S.events.find((x) => x.id === id);
-      const status = (ev && ev.rsvps && ev.rsvps[S.me] === rb.dataset.st) ? null : rb.dataset.st; // 再點一次＝取消
+      const ev = S.events.find((x) => x.id === rb.dataset.id);
+      if (!ev) return;
+      if (rb.dataset.st === 'yes') { openHouseholdRsvp(ev); return; }   // 會到 → 順便幫家人勾選
+      // 再看看/不克：只設自己（再點一次＝取消）
+      const status = (ev.rsvps && ev.rsvps[S.me] === rb.dataset.st) ? null : rb.dataset.st;
       try {
-        const r = await fetch('/api/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'rsvp', id, status }) });
+        const r = await fetch('/api/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'rsvp', id: ev.id, status }) });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || '失敗');
-        ev.rsvps = ev.rsvps || {};
-        if (status) ev.rsvps[S.me] = status; else delete ev.rsvps[S.me];
+        ev.rsvps = d.rsvps || ev.rsvps || {};
         renderBoard();
       } catch (err) { toast(err.message, 4000); }
     } else if (db) {
@@ -1980,23 +2042,15 @@ function openFaceTag(faceIdx, current) {
 
   showFaceSheet(`
     <h3>這張臉是誰？</h3>
-    <p class="hint">選出這是族譜裡的哪一位。送出後管理員核准，之後系統就會自動在別的照片裡認出他。</p>
+    <p class="hint">選出這是族譜裡的哪一位，送出馬上生效，系統之後就會在別的照片裡自動認出他。</p>
     <div class="edit-grid" style="margin-top:.75rem">
       <label class="fld">
         <span>是這位家人</span>
         <select class="input" id="fs-person"><option value="">請選擇…</option>${opts}</select>
       </label>
-      <label class="fld">
-        <span>你是誰？</span>
-        <input class="input" id="fs-by" placeholder="你的名字" value="${esc(localStorage.getItem('chou-name') || '')}">
-      </label>
-      <label class="fld">
-        <span>家族密碼</span>
-        <input class="input" id="fs-pw" type="password" value="${esc(localStorage.getItem('chou-pw') || '')}">
-      </label>
     </div>
     <div style="display:flex; gap:.5rem; align-items:center; margin-top:1rem; flex-wrap:wrap">
-      <button class="btn" id="fs-send">送出</button>
+      <button class="btn" id="fs-send">標記</button>
       <button class="btn btn-ghost" id="fs-cancel">取消</button>
       <span class="muted" id="fs-msg"></span>
     </div>`);
@@ -2008,14 +2062,7 @@ function openFaceTag(faceIdx, current) {
 
 async function submitFaceTag(faceIdx) {
   const personId = $('#fs-person').value;
-  const by = $('#fs-by').value.trim();
-  const pw = $('#fs-pw').value;
   if (!personId) return toast('請選一位家人');
-  if (!by) return toast('請填你的名字');
-  if (!pw) return toast('請輸入家族密碼');
-
-  localStorage.setItem('chou-name', by);
-  localStorage.setItem('chou-pw', pw);
 
   const f = S.faces.faces[faceIdx];
   const photo = S.faces.photos[f.p];
@@ -2024,22 +2071,21 @@ async function submitFaceTag(faceIdx) {
   const ref = { p: photo.w, b: f.b, d: Array.from(descAt(faceIdx)).map((v) => +v.toFixed(5)) };
 
   $('#fs-send').disabled = true;
-  $('#fs-msg').textContent = '送出中…';
-
-  const fd = new FormData();
-  fd.append('password', pw);
-  fd.append('submittedBy', by);
-  fd.append('target', personId);
-  fd.append('targetName', person ? person.name : personId);
-  fd.append('tagRef', JSON.stringify(ref));
+  $('#fs-msg').textContent = '標記中…';
 
   try {
-    const res = await fetch('/api/propose', { method: 'POST', body: fd });
+    const res = await fetch('/api/tag', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ personId, ref }),
+    });
     const out = await res.json();
-    if (!res.ok) throw new Error(out.error || '送出失敗');
-    showFaceSheet(`<h3>收到了 🙏</h3><p class="hint">已送出，管理員核准後，${esc(person ? person.name : '')}就會在這張和其他照片裡被自動認出來。</p>
-      <div style="margin-top:1rem"><button class="btn" id="fs-ok">好</button></div>`);
-    $('#fs-ok').addEventListener('click', closeFaceSheet);
+    if (!res.ok) throw new Error(out.error || '標記失敗');
+    // 本機也加上這筆 ref，讓辨識馬上生效（不用等重新載入）
+    if (person && !out.dup) { person.refs = person.refs || []; person.refs.push(ref); }
+    closeFaceSheet();
+    toast(`已標記為 ${person ? person.name : ''} ✓`, 3000);
+    // 若正在看燈箱，重畫人臉框（剛標的臉會變成「認得出」）
+    if (!$('#lightbox').hidden && S.lb.showFaces) drawFaceBoxes(S.lb.list[S.lb.idx]);
   } catch (err) {
     $('#fs-send').disabled = false;
     $('#fs-msg').textContent = '';
