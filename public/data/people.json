@@ -10951,7 +10951,9 @@
       "name": "王法正",
       "gender": "M",
       "note": "周月慧與王勇銘的兒子（二兒子）",
-      "spouse": [],
+      "spouse": [
+        "p-1784336388169-1"
+      ],
       "parents": [
         "zhou-yuehui",
         "wang-yongming"
@@ -13323,6 +13325,38 @@
       "avatar": {
         "img": "avatars/1784334948116-ks6d9j.jpg"
       }
+    },
+    {
+      "id": "p-1784336388169-1",
+      "name": "郭芷纓",
+      "note": "王法正的配偶",
+      "spouse": [
+        "wang-fazheng"
+      ],
+      "parents": [],
+      "refs": []
+    },
+    {
+      "id": "p-1784336388169-2",
+      "name": "王秭耘",
+      "note": "王法正的小孩",
+      "spouse": [],
+      "parents": [
+        "wang-fazheng",
+        "p-1784336388169-1"
+      ],
+      "refs": []
+    },
+    {
+      "id": "p-1784336388169-3",
+      "name": "王秭和",
+      "note": "王法正的小孩",
+      "spouse": [],
+      "parents": [
+        "wang-fazheng",
+        "p-1784336388169-1"
+      ],
+      "refs": []
     }
   ]
 }
