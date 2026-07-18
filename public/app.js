@@ -889,7 +889,7 @@ function setupAvatarCrop(file) {
           <span class="crop-handle"></span>
         </div>
       </div>
-      <p class="hint" style="margin:.4rem 0 0">拖動方框對準頭，拉右下角可縮放。</p>`;
+      <p class="hint" style="margin:.4rem 0 0">點一下頭的位置，圓框就會移過去；拖動可微調，拉右下角圓鈕縮放。</p>`;
 
     const stage = $('#crop-stage');
     const cbox = $('#crop-box');
@@ -917,29 +917,45 @@ function setupAvatarCrop(file) {
         y = Math.max(0, Math.min(y, ih - size));
       };
 
+      const imgEl = $('#crop-img');
       let mode = null, sx = 0, sy = 0, ox = 0, oy = 0, osize = 0;
-      const onDown = (e, m) => {
-        e.preventDefault();
-        mode = m;
-        const pt = e.touches ? e.touches[0] : e;
-        sx = pt.clientX; sy = pt.clientY; ox = x; oy = y; osize = size;
-        window.addEventListener('pointermove', onMove);
-        window.addEventListener('pointerup', onUp);
-      };
+
       const onMove = (e) => {
         if (!mode) return;
         const dx = e.clientX - sx, dy = e.clientY - sy;
-        if (mode === 'move') { x = ox + dx; y = oy + dy; }
-        else { size = osize + Math.max(dx, dy); } // 縮放：以右下角拉
+        if (mode === 'resize') size = osize + Math.max(dx, dy);
+        else { x = ox + dx; y = oy + dy; }
         clamp(); apply();
       };
-      const onUp = () => {
+      const onUp = (e) => {
         mode = null;
-        window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', onUp);
+        try { stage.releasePointerCapture(e.pointerId); } catch {}
+        stage.removeEventListener('pointermove', onMove);
+        stage.removeEventListener('pointerup', onUp);
+        stage.removeEventListener('pointercancel', onUp);
       };
-      cbox.addEventListener('pointerdown', (e) => { if (e.target !== handle) onDown(e, 'move'); });
-      handle.addEventListener('pointerdown', (e) => onDown(e, 'resize'));
+      /*
+       * 綁在整個裁切區（stage 有 touch-action:none，手機拖框才不會捲到頁面）：
+       *   按右下角圓鈕 → 縮放
+       *   按框外任一處 → 框中心跳到手指位置（手機「點頭」就對位，最直覺）
+       *   按框內      → 直接拖曳
+       * setPointerCapture 讓手指移出框外時事件還收得到，拖曳才不會斷。
+       */
+      stage.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        mode = (e.target === handle) ? 'resize' : 'move';
+        if (mode === 'move' && !cbox.contains(e.target)) {
+          const rect = imgEl.getBoundingClientRect();
+          x = (e.clientX - rect.left) - size / 2;
+          y = (e.clientY - rect.top) - size / 2;
+          clamp(); apply();
+        }
+        sx = e.clientX; sy = e.clientY; ox = x; oy = y; osize = size;
+        try { stage.setPointerCapture(e.pointerId); } catch {}
+        stage.addEventListener('pointermove', onMove);
+        stage.addEventListener('pointerup', onUp);
+        stage.addEventListener('pointercancel', onUp);
+      });
     });
   }).catch(() => { wrap.innerHTML = `<p class="hint">照片讀取失敗，換一張試試。</p>`; });
 }

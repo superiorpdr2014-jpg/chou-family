@@ -329,6 +329,7 @@ a { color: inherit; }
   box-shadow: 0 0 0 9999px rgba(0,0,0,.45);  /* 框外變暗，聚焦在頭上 */
   cursor: move;
   box-sizing: border-box;
+  touch-action: none;   /* 手機拖框時不要跟著捲頁面 */
 }
 .crop-handle {
   position: absolute; right: -11px; bottom: -11px;
