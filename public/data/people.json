@@ -3580,7 +3580,9 @@
       "name": "周月治",
       "gender": "F",
       "note": "周振南與周粉的女兒（三阿姨）",
-      "spouse": [],
+      "spouse": [
+        "p-1784375974791-1"
+      ],
       "parents": [
         "zhou-zhenyuan",
         "zhou-fen"
@@ -16667,6 +16669,16 @@
         "zhou-hongduan",
         "li-maolin"
       ],
+      "refs": []
+    },
+    {
+      "id": "p-1784375974791-1",
+      "name": "許文毅",
+      "note": "周月治的配偶",
+      "spouse": [
+        "zhou-yuezhi"
+      ],
+      "parents": [],
       "refs": []
     }
   ]
