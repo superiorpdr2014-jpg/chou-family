@@ -309,6 +309,29 @@ a { color: inherit; }
   touch-action: none;
 }
 
+/* 標記人臉的面板（蓋在燈箱之上，z-index 要比燈箱高） */
+.face-sheet { position: fixed; inset: 0; z-index: 300; display: flex; align-items: flex-end; justify-content: center; }
+.face-sheet[hidden] { display: none; }
+.face-sheet-bg { position: absolute; inset: 0; background: rgba(0,0,0,.5); }
+.face-sheet-card {
+  position: relative;
+  background: var(--paper);
+  border-radius: 14px 14px 0 0;
+  padding: 1.5rem clamp(1rem, 5vw, 2rem) 2rem;
+  width: 100%; max-width: 42rem;
+  box-shadow: 0 -8px 40px rgba(0,0,0,.3);
+  max-height: 85vh; overflow-y: auto;
+}
+.face-sheet-card h3 { font-family: var(--serif); margin: 0 0 .3rem; font-size: 1.2rem; }
+@media (min-width: 641px) {
+  .face-sheet { align-items: center; }
+  .face-sheet-card { border-radius: 14px; }
+}
+
+/* 可標記的人臉框：滑鼠變手指、hover 有反饋 */
+.lb-face.taggable { cursor: pointer; }
+.lb-face.taggable:hover { border-color: var(--accent); background: rgba(154,91,61,.12); }
+
 .strictness { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; font-size: .85rem; color: var(--ink-soft); }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 100px; overflow: hidden; }
 .seg button {

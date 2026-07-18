@@ -100,6 +100,17 @@ function applyProposal(data, prop) {
     }
   }
 
+  // 在照片上標記的人臉 → 加進這個人的 refs，讓他能被自動認出來
+  if (c.tagRef && c.tagRef.d) {
+    person.refs = person.refs || [];
+    // 同一張臉別重複加（照片路徑+框一樣就當同一張）
+    const key = (r) => `${r.p}|${(r.b || []).join(',')}`;
+    if (!person.refs.some((r) => key(r) === key(c.tagRef))) {
+      person.refs.push(c.tagRef);
+      log.push(`標記了一張 ${person.name} 的臉`);
+    }
+  }
+
   if (c.addSpouse) {
     const id = newId(people, seed);
     people.push({ id, name: c.addSpouse, note: `${person.name}的配偶`, spouse: [person.id], parents: [], refs: [] });

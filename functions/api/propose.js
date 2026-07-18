@@ -99,6 +99,19 @@ export async function onRequestPost({ request, env }) {
     // 整個人移除
     if (form.get('removePerson')) changes.removePerson = true;
 
+    // 在照片上標記人臉：把某張已偵測到的臉指定給這個人。
+    // ref = { p: 照片路徑, b: 臉框, d: 128 維特徵值 } —— 位置和特徵值前端都已備好。
+    const tagRaw = form.get('tagRef');
+    if (tagRaw) {
+      try {
+        const t = JSON.parse(String(tagRaw));
+        if (t && typeof t.p === 'string' && Array.isArray(t.b) && t.b.length === 4
+            && Array.isArray(t.d) && t.d.length === 128 && t.d.every((n) => typeof n === 'number')) {
+          changes.tagRef = { p: t.p.slice(0, 200), b: t.b.map(Number), d: t.d };
+        }
+      } catch { /* 壞掉就當沒有 */ }
+    }
+
     // 提案編號：時間戳只是為了排序好看，隨機碼才是避免撞號的關鍵
     const rand = Math.random().toString(36).slice(2, 8);
     const id = `${Date.now()}-${rand}`;

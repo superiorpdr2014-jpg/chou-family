@@ -1077,6 +1077,7 @@ async function loadProposals() {
         rows.push(`⚠️ 解除跟「<b>${esc(ex ? ex.name : c.removeSpouse)}</b>」的婚姻關係`);
       }
       if (c.removePerson) rows.push(`🔴 <b>把這個人從族譜整個移除</b>`);
+      if (c.tagRef) rows.push(`在照片上標記了一張<b>${esc(p.targetName || '')}</b>的臉（之後會自動認出他）`);
       return `
         <div class="panel" style="margin-bottom:1rem" data-id="${esc(p.id)}">
           <h3>${esc(p.targetName || p.target)}</h3>
@@ -1328,28 +1329,141 @@ function drawFaceBoxes(pi) {
     const f = S.faces.faces[i];
     const [x, y, w, h] = f.b;
     const who = whoIs(i);
-    return `<div class="lb-face ${who ? 'named' : ''}" data-fi="${i}"
+    // 顯示人臉時每張臉都可以點：認得出的 → 看那個人；認不出的 → 標記給某位家人
+    const label = who ? esc(who) : (f.q ? '＋ 標記' : '');
+    return `<div class="lb-face ${who ? 'named' : ''} ${f.q ? 'taggable' : ''}" data-fi="${i}"
       style="left:${x * 100}%;top:${y * 100}%;width:${w * 100}%;height:${h * 100}%">
-      ${who ? `<span class="lbl">${esc(who)}</span>` : IS_ADMIN ? '<span class="lbl">點我命名</span>' : ''}
+      ${label ? `<span class="lbl">${label}</span>` : ''}
     </div>`;
   }).join('');
 }
 
 /** 這張臉是誰？拿名冊比對。認不出來就回 null，寧可不標也不要標錯。 */
-function whoIs(faceIdx) {
+function whoIsPerson(faceIdx) {
   const f = S.faces.faces[faceIdx];
   if (!f.q) return null;
   const d = descAt(faceIdx);
   const limit = STRICTNESS.strict.value - sizePenalty(f.px);
   let best = null, bestDist = limit;
   for (const p of S.people) {
-    for (const r of p.refs) {
+    for (const r of (p.refs || [])) {
+      if (!r.d) continue;
       const dist = distance(Float32Array.from(r.d), d);
-      if (dist < bestDist) { bestDist = dist; best = p.name; }
+      if (dist < bestDist) { bestDist = dist; best = p; }
     }
   }
   return best;
 }
+function whoIs(faceIdx) {
+  const p = whoIsPerson(faceIdx);
+  return p ? p.name : null;
+}
+
+/* ============ 在照片上標記人臉 → 家族成員 ============ */
+
+/** 認得出的臉：選單 —— 看這個人 / 標記給別人（認錯時更正） */
+function openFaceMenu(faceIdx, person) {
+  showFaceSheet(`
+    <h3>這是 ${esc(person.name)}？</h3>
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-top:1rem">
+      <a class="btn" href="#/person/${encodeURIComponent(person.id)}" id="fs-view">看 ${esc(person.name)} 的資料與關係</a>
+      <button class="btn btn-ghost" id="fs-retag">認錯了，標記給別人</button>
+    </div>`);
+  $('#fs-view').addEventListener('click', closeFaceSheet);
+  $('#fs-retag').addEventListener('click', () => openFaceTag(faceIdx, person));
+}
+
+/** 標記面板：把這張臉指定給某位家族成員 */
+function openFaceTag(faceIdx, current) {
+  const opts = S.people
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant'))
+    .map((p) => `<option value="${esc(p.id)}">${esc(p.name)}${p.note ? '（' + esc(p.note) + '）' : ''}</option>`)
+    .join('');
+
+  showFaceSheet(`
+    <h3>這張臉是誰？</h3>
+    <p class="hint">選出這是族譜裡的哪一位。送出後管理員核准，之後系統就會自動在別的照片裡認出他。</p>
+    <div class="edit-grid" style="margin-top:.75rem">
+      <label class="fld">
+        <span>是這位家人</span>
+        <select class="input" id="fs-person"><option value="">請選擇…</option>${opts}</select>
+      </label>
+      <label class="fld">
+        <span>你是誰？</span>
+        <input class="input" id="fs-by" placeholder="你的名字" value="${esc(localStorage.getItem('chou-name') || '')}">
+      </label>
+      <label class="fld">
+        <span>家族密碼</span>
+        <input class="input" id="fs-pw" type="password" value="${esc(localStorage.getItem('chou-pw') || '')}">
+      </label>
+    </div>
+    <div style="display:flex; gap:.5rem; align-items:center; margin-top:1rem; flex-wrap:wrap">
+      <button class="btn" id="fs-send">送出</button>
+      <button class="btn btn-ghost" id="fs-cancel">取消</button>
+      <span class="muted" id="fs-msg"></span>
+    </div>`);
+
+  if (current) $('#fs-person').value = current.id;
+  $('#fs-cancel').addEventListener('click', closeFaceSheet);
+  $('#fs-send').addEventListener('click', () => submitFaceTag(faceIdx));
+}
+
+async function submitFaceTag(faceIdx) {
+  const personId = $('#fs-person').value;
+  const by = $('#fs-by').value.trim();
+  const pw = $('#fs-pw').value;
+  if (!personId) return toast('請選一位家人');
+  if (!by) return toast('請填你的名字');
+  if (!pw) return toast('請輸入家族密碼');
+
+  localStorage.setItem('chou-name', by);
+  localStorage.setItem('chou-pw', pw);
+
+  const f = S.faces.faces[faceIdx];
+  const photo = S.faces.photos[f.p];
+  const person = S.people.find((p) => p.id === personId);
+  // 這張臉的位置、特徵值都已經在建置時算好了，直接送
+  const ref = { p: photo.w, b: f.b, d: Array.from(descAt(faceIdx)).map((v) => +v.toFixed(5)) };
+
+  $('#fs-send').disabled = true;
+  $('#fs-msg').textContent = '送出中…';
+
+  const fd = new FormData();
+  fd.append('password', pw);
+  fd.append('submittedBy', by);
+  fd.append('target', personId);
+  fd.append('targetName', person ? person.name : personId);
+  fd.append('tagRef', JSON.stringify(ref));
+
+  try {
+    const res = await fetch('/api/propose', { method: 'POST', body: fd });
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error || '送出失敗');
+    showFaceSheet(`<h3>收到了 🙏</h3><p class="hint">已送出，管理員核准後，${esc(person ? person.name : '')}就會在這張和其他照片裡被自動認出來。</p>
+      <div style="margin-top:1rem"><button class="btn" id="fs-ok">好</button></div>`);
+    $('#fs-ok').addEventListener('click', closeFaceSheet);
+  } catch (err) {
+    $('#fs-send').disabled = false;
+    $('#fs-msg').textContent = '';
+    toast(err.message, 5000);
+  }
+}
+
+function showFaceSheet(html) {
+  let sheet = $('#face-sheet');
+  if (!sheet) {
+    sheet = document.createElement('div');
+    sheet.id = 'face-sheet';
+    sheet.className = 'face-sheet';
+    sheet.innerHTML = `<div class="face-sheet-bg"></div><div class="face-sheet-card"></div>`;
+    document.body.appendChild(sheet);
+    sheet.querySelector('.face-sheet-bg').addEventListener('click', closeFaceSheet);
+  }
+  sheet.querySelector('.face-sheet-card').innerHTML = html;
+  sheet.hidden = false;
+}
+function closeFaceSheet() { const s = $('#face-sheet'); if (s) s.hidden = true; }
 
 /* ============ 管理模式：標記人名 ============ */
 
@@ -1463,6 +1577,16 @@ function initLightbox() {
     drawFaceBoxes(S.lb.list[S.lb.idx]);
   });
   $('#lb-stage').addEventListener('click', (e) => { if (e.target.id === 'lb-stage') closeLightbox(); });
+
+  // 點人臉框 → 認得出就去看那個人，認不出就標記給某位家人
+  $('#lb-faces').addEventListener('click', (e) => {
+    const el = e.target.closest('.lb-face.taggable');
+    if (!el) return;
+    const fi = +el.dataset.fi;
+    const person = whoIsPerson(fi);
+    if (person) openFaceMenu(fi, person);
+    else openFaceTag(fi, null);
+  });
 
   document.addEventListener('keydown', (e) => {
     if ($('#lightbox').hidden) return;
