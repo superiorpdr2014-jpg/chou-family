@@ -14,10 +14,34 @@
 
 const CACHE_SECONDS = 20;
 
+// 跟 _middleware.js / login.js 同一套 session 驗證（含名字的資料要登入才給）
+const b64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+async function sign(secret, msg) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg));
+  return b64url(new Uint8Array(sig));
+}
+async function validSession(request, env) {
+  if (!env.ADMIN_PASSWORD) return false;
+  const m = (request.headers.get('cookie') || '').match(/(?:^|;\s*)chou_sess=([^;]+)/);
+  if (!m) return false;
+  const [payload, sig] = m[1].split('.');
+  if (!payload || !sig || sig !== (await sign(env.ADMIN_PASSWORD, payload))) return false;
+  try {
+    const d = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(payload.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))));
+    return d.exp > Date.now();
+  } catch { return false; }
+}
+
 export async function onRequestGet({ env, request }) {
   if (!env.GH_TOKEN || !env.GH_REPO) {
     return new Response(JSON.stringify({ error: 'not configured' }), {
       status: 500, headers: { 'content-type': 'application/json' },
+    });
+  }
+  if (!(await validSession(request, env))) {
+    return new Response(JSON.stringify({ error: 'need login' }), {
+      status: 401, headers: { 'content-type': 'application/json' },
     });
   }
 

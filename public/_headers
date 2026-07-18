@@ -1,3 +1,9 @@
+# 私人家族相簿：這個標頭連圖片、JSON 等所有資源都擋掉搜尋引擎收錄
+# （meta 標籤只擋 HTML，這個標頭連圖片直連都擋）
+/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Referrer-Policy: no-referrer
+
 # Cloudflare Pages 的快取設定
 
 # 資料檔會變（新增相簿、標名字、改族譜），每次都要跟伺服器確認一下有沒有新版。

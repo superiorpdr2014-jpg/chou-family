@@ -111,12 +111,15 @@ async function loadData() {
   // 不這樣做的話，新增相簿或改了族譜，家人的瀏覽器會一直顯示舊的，
   // 而且他們根本不知道要清快取。
   const get = (url) => fetch(url, { cache: 'no-cache' });
-  const [albums, faces, binBuf, people] = await Promise.all([
+  const [albums, faces, binBuf, peopleRes] = await Promise.all([
     get('data/albums.json').then((r) => r.json()),
     get('data/faces.json').then((r) => r.json()),
     get('data/faces.bin').then((r) => r.arrayBuffer()),
-    get('data/people.json').then((r) => r.json()).catch(() => ({ people: [] })),
+    get('data/people.json'),
   ]);
+  // people.json 有登入牆守著，session 過期會回 401 → 退回登入頁
+  if (peopleRes.status === 401) { const e = new Error('need login'); e.needLogin = true; throw e; }
+  const people = await peopleRes.json().catch(() => ({ people: [] }));
   S.albums = albums;
   S.faces = faces;
   S.desc = new Float32Array(binBuf);
@@ -1606,16 +1609,90 @@ function initLightbox() {
   }, { passive: true });
 }
 
+/* ============ 登入牆 ============ */
+
+/** 檢查有沒有登入。/api/whoami 只回 {ok} 很便宜。 */
+async function isLoggedIn() {
+  try {
+    const r = await fetch('/api/login', { method: 'GET', cache: 'no-store' });
+    if (!r.ok) return false;
+    const d = await r.json();
+    return !!d.ok;
+  } catch { return false; }
+}
+
+function renderLogin() {
+  document.body.classList.add('locked');
+  let scr = document.getElementById('login-screen');
+  if (!scr) {
+    scr = document.createElement('div');
+    scr.id = 'login-screen';
+    document.body.appendChild(scr);
+  }
+  scr.innerHTML = `
+    <img class="login-bg" src="photos/20250503/w/0004.webp" alt="">
+    <div class="login-shade"></div>
+    <div class="login-card">
+      <h1>周氏大家族</h1>
+      <p class="login-sub">這是家人專屬的相簿。<br>為了保護大家的隱私，請確認你是家人。</p>
+      <div class="login-form">
+        <input class="input" id="lg-name" placeholder="你的名字" autocomplete="off">
+        <input class="input" id="lg-rel" placeholder="爸爸或媽媽的名字（擇一）" autocomplete="off">
+        <input class="input" id="lg-pw" type="password" placeholder="家族密碼">
+        <button class="btn" id="lg-go">進入相簿</button>
+        <p class="login-hint" id="lg-msg">族譜上沒有你父母的話，可以填另一半或小孩的名字。</p>
+      </div>
+    </div>`;
+
+  const submit = async () => {
+    const name = document.getElementById('lg-name').value.trim();
+    const rel = document.getElementById('lg-rel').value.trim();
+    const pw = document.getElementById('lg-pw').value;
+    if (!name || !rel || !pw) { document.getElementById('lg-msg').textContent = '三個欄位都要填喔。'; return; }
+    const btn = document.getElementById('lg-go');
+    btn.disabled = true; document.getElementById('lg-msg').textContent = '確認中…';
+    try {
+      const fd = new FormData();
+      fd.append('name', name); fd.append('relative', rel); fd.append('password', pw);
+      const r = await fetch('/api/login', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || '登入失敗');
+      // 把名字記起來，之後上傳/修正表單自動帶入
+      localStorage.setItem('chou-name', name);
+      localStorage.setItem('chou-pw', pw);
+      location.reload();
+    } catch (err) {
+      btn.disabled = false;
+      document.getElementById('lg-msg').textContent = err.message;
+    }
+  };
+  document.getElementById('lg-go').addEventListener('click', submit);
+  scr.querySelectorAll('.input').forEach((el) => el.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); }));
+}
+
 async function main() {
+  // 先過登入牆：沒登入只看得到登入頁，拿不到族譜的名字與關係
+  if (!(await isLoggedIn())) { renderLogin(); return; }
+  document.body.classList.remove('locked');
+
   view().innerHTML = `<div class="wrap"><div class="loading"><span class="spinner"></span>載入相簿…</div></div>`;
   try {
     await loadData();
   } catch (e) {
+    // 中途 session 失效（例如過期）→ 回登入頁
+    if (e && e.needLogin) { renderLogin(); return; }
     view().innerHTML = `<div class="wrap"><div class="empty"><h3>載入失敗</h3><p>${esc(e.message)}</p></div></div>`;
     return;
   }
   initLightbox();
   initAdmin();
+  const lo = document.getElementById('logout-link');
+  if (lo) lo.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!confirm('要登出嗎？下次要重新輸入名字和密碼。')) return;
+    await fetch('/api/login?logout=1').catch(() => {});
+    location.reload();
+  });
   window.addEventListener('hashchange', route);
   route();
 }
