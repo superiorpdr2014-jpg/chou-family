@@ -92,6 +92,20 @@ export async function onRequestPost({ request, env }) {
       } catch { /* 格式壞掉就當沒填 */ }
     }
 
+    // 連結現有的人當配偶（而不是新增同名的人）
+    const linkSpouse = String(form.get('linkSpouse') || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 60);
+    if (linkSpouse) changes.linkSpouse = linkSpouse;
+
+    // 連結現有的人當小孩
+    const linkKidsRaw = form.get('linkChildren');
+    if (linkKidsRaw) {
+      try {
+        const ids = JSON.parse(String(linkKidsRaw))
+          .map((s) => String(s).replace(/[^a-zA-Z0-9-]/g, '').slice(0, 60)).filter(Boolean).slice(0, 12);
+        if (ids.length) changes.linkChildren = ids;
+      } catch { /* 壞掉就當沒填 */ }
+    }
+
     // 解除婚姻關係（離婚／分開）
     const removeSpouse = String(form.get('removeSpouse') || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 60);
     if (removeSpouse) changes.removeSpouse = removeSpouse;

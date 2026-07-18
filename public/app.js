@@ -1037,6 +1037,33 @@ async function submitEdit(person) {
   if (!name && !spouse && !kids.length && !file && !unspouse && !remove) return toast('沒有填任何要改的東西');
   if (remove && !confirm(`確定要把「${person.name}」整個從族譜移除嗎？\n（要管理員核准才會真的移除）`)) return;
 
+  /*
+   * 重複名字檢查：新增配偶/小孩時，如果族譜裡已經有同名的人，
+   * 問清楚是「連結現有這一位」還是「真的另外新增一個同名的人」，
+   * 避免像先前那樣冒出重複的王法程。
+   */
+  let linkSpouseId = '';
+  let addSpouseName = spouse;
+  if (spouse) {
+    const ex = S.people.find((p) => p.name === spouse && p.id !== person.id);
+    if (ex) {
+      if (confirm(`族譜裡已經有「${spouse}」了。\n\n按「確定」＝直接連結這一位當配偶（避免重複，通常選這個）。\n按「取消」＝這是另一個剛好同名的新的人，另外新增。`)) {
+        linkSpouseId = ex.id; addSpouseName = '';
+      }
+    }
+  }
+
+  const newKids = [];
+  const linkKidIds = [];
+  for (const kid of kids) {
+    const ex = S.people.find((p) => p.name === kid && p.id !== person.id);
+    if (ex && confirm(`族譜裡已經有「${kid}」了。\n\n按「確定」＝把這一位連結成 ${person.name} 的小孩（避免重複）。\n按「取消」＝這是另一個剛好同名的新的人，另外新增。`)) {
+      linkKidIds.push(ex.id);
+    } else {
+      newKids.push(kid);
+    }
+  }
+
   localStorage.setItem('chou-pw', pw);
   localStorage.setItem('chou-name', by);
 
@@ -1049,8 +1076,10 @@ async function submitEdit(person) {
   fd.append('target', person.id);
   fd.append('targetName', person.name);
   if (name) fd.append('name', name);
-  if (spouse) fd.append('addSpouse', spouse);
-  if (kids.length) fd.append('addChildren', JSON.stringify(kids));
+  if (addSpouseName) fd.append('addSpouse', addSpouseName);
+  if (linkSpouseId) fd.append('linkSpouse', linkSpouseId);
+  if (newKids.length) fd.append('addChildren', JSON.stringify(newKids));
+  if (linkKidIds.length) fd.append('linkChildren', JSON.stringify(linkKidIds));
   if (unspouse) fd.append('removeSpouse', unspouse);
   if (remove) fd.append('removePerson', '1');
 
@@ -1131,6 +1160,14 @@ async function loadProposals() {
       if (c.avatarImg) rows.push(`換大頭照`);
       if (c.addSpouse) rows.push(`新增配偶「<b>${esc(c.addSpouse)}</b>」`);
       if (c.addChildren) rows.push(`新增小孩「<b>${esc(c.addChildren.join('、'))}</b>」`);
+      if (c.linkSpouse) {
+        const s = S.people.find((x) => x.id === c.linkSpouse);
+        rows.push(`連結現有的「<b>${esc(s ? s.name : c.linkSpouse)}</b>」當配偶`);
+      }
+      if (c.linkChildren) {
+        const names = c.linkChildren.map((id) => (S.people.find((x) => x.id === id) || {}).name || id);
+        rows.push(`連結現有的「<b>${esc(names.join('、'))}</b>」當小孩`);
+      }
       if (c.removeSpouse) {
         const ex = S.people.find((x) => x.id === c.removeSpouse);
         rows.push(`⚠️ 解除跟「<b>${esc(ex ? ex.name : c.removeSpouse)}</b>」的婚姻關係`);

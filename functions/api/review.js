@@ -118,6 +118,28 @@ function applyProposal(data, prop) {
     log.push(`新增配偶 ${c.addSpouse}`);
   }
 
+  // 連結現有的人當配偶（不新增同名的人）
+  if (c.linkSpouse) {
+    const ex = people.find((p) => p.id === c.linkSpouse);
+    if (ex) {
+      if (!(person.spouse || []).includes(ex.id)) person.spouse = [...(person.spouse || []), ex.id];
+      if (!(ex.spouse || []).includes(person.id)) ex.spouse = [...(ex.spouse || []), person.id];
+      log.push(`連結配偶 ${ex.name}`);
+    }
+  }
+
+  // 連結現有的人當小孩：把這個人（和配偶）加進小孩的 parents
+  if (c.linkChildren && c.linkChildren.length) {
+    const parents = [person.id, ...(person.spouse || [])];
+    for (const cid of c.linkChildren) {
+      const kid = people.find((p) => p.id === cid);
+      if (kid) {
+        kid.parents = [...new Set([...(kid.parents || []), ...parents])];
+        log.push(`連結小孩 ${kid.name}`);
+      }
+    }
+  }
+
   if (c.addChildren && c.addChildren.length) {
     // 小孩的父母要同時掛上這個人和他的配偶，不然樹上會變成單親
     const parents = [person.id, ...(person.spouse || [])];
