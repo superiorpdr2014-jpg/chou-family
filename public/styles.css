@@ -295,6 +295,23 @@ a { color: inherit; }
 .album-title { font-family: var(--serif); font-size: 1.15rem; font-weight: 600; margin: .1rem 0 .3rem; }
 .album-meta { font-size: .82rem; color: var(--ink-faint); }
 
+/* 聚會自動對應的「即將到來新相簿」卡片 */
+.album-upcoming { border-style: dashed; border-color: var(--accent); background: linear-gradient(180deg, #fffaf6, #fff); }
+.album-upcoming.open { border-style: solid; }
+.up-cover {
+  aspect-ratio: 4/3; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: .5rem;
+  background: repeating-linear-gradient(135deg, #f7ede2, #f7ede2 10px, #f3e6d6 10px, #f3e6d6 20px);
+  position: relative;
+}
+.up-emoji { font-size: 2.2rem; opacity: .8; }
+.up-badge {
+  position: absolute; top: .6rem; left: .6rem;
+  font-size: .72rem; font-weight: 600; color: #fff;
+  background: var(--accent); padding: .2rem .6rem; border-radius: 100px;
+}
+.album-upcoming.open .up-badge { background: #3f8f4f; }
+
 /* ---------- 照片格 ---------- */
 
 /*

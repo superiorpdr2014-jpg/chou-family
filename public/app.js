@@ -303,6 +303,15 @@ function renderHome() {
     .sort((a, b) => String(a.when || '9999').localeCompare(String(b.when || '9999')))
     .slice(0, 4);
 
+  // 每場有日期的聚會會自動對應一本相簿。還沒有人上傳照片(相簿還不存在)前，
+  // 在相簿區顯示成「即將到來的新相簿」；聚會當天起就開放上傳。
+  const pendingAlbums = (S.events || [])
+    .map((e) => eventAlbum(e))
+    .filter((a) => a && !albums.some((al) => al.id === a.id))
+    .filter((a, i, arr) => arr.findIndex((x) => x.id === a.id) === i)   // 去重
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    .map((a) => ({ ...a, open: a.date <= todayStr }));
+
   view().innerHTML = `
     <section class="home-banner">
       <img src="home-banner.jpg" alt="周氏大家族大合照">
@@ -381,6 +390,18 @@ function renderHome() {
         <a class="btn btn-ghost btn-sm" href="#/upload">＋ 上傳照片</a>
       </div>
       <div class="albums">
+        ${pendingAlbums.map((a) => `
+          <a class="album-card album-upcoming ${a.open ? 'open' : ''}" ${a.open ? `href="#/upload/${encodeURIComponent(a.dir)}"` : `href="#" data-locked="${esc(fmtDate(a.date))}"`}>
+            <div class="album-cover up-cover">
+              <span class="up-badge">${a.open ? '📤 開放上傳中' : '🗓️ 即將到來'}</span>
+              <span class="up-emoji">${a.open ? '＋' : '🗓️'}</span>
+            </div>
+            <div class="album-body">
+              <div class="album-date">${fmtDate(a.date)}</div>
+              <div class="album-title">${esc(a.title)}</div>
+              <div class="album-meta">${a.open ? '點我上傳這場聚會的照片' : `聚會當天開放上傳`}</div>
+            </div>
+          </a>`).join('')}
         ${albums.map((a) => `
           <a class="album-card" href="#/album/${a.id}">
             <div class="album-cover"><img src="${a.cover}" alt="${esc(a.title)}" loading="lazy"></div>
@@ -392,6 +413,11 @@ function renderHome() {
           </a>`).join('')}
       </div>
     </div>`;
+
+  // 還沒開放的「即將到來新相簿」點了給提示，不跳頁
+  document.querySelectorAll('.album-upcoming[data-locked]').forEach((el) => {
+    el.addEventListener('click', (e) => { e.preventDefault(); toast(`這本相簿在聚會當天（${el.dataset.locked}）就會開放上傳 📸`, 4000); });
+  });
 
   mountFilmPlayer();
 }
@@ -1441,6 +1467,16 @@ function unlockAdmin(onOk) {
   $('#ua-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
 }
 
+/** 從聚會推導出對應的相簿（用聚會日期＋名稱，跟上傳的命名慣例一致） */
+function eventAlbum(ev) {
+  if (!ev || !ev.when) return null;
+  const m = String(ev.when).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  const [, y, mo, d] = m;
+  const id = `${y}${mo}${d}`;
+  return { id, dir: id + (ev.title || ''), date: `${y}-${mo}-${d}`, title: ev.title || '聚會' };
+}
+
 async function renderBoard() {
   view().innerHTML = `<div class="wrap"><div class="loading"><span class="spinner"></span>載入中…</div></div>`;
   let data = { events: [] };
@@ -1817,7 +1853,13 @@ function renderUpload(presetAlbumId) {
   const savedPw = localStorage.getItem('chou-pw') || '';
   const savedName = localStorage.getItem('chou-name') || '';
   // 從某本相簿點「加照片到這本」進來的話，預選那本
-  const preset = presetAlbumId ? albums.find((a) => a.id === presetAlbumId) : null;
+  const preset = presetAlbumId ? albums.find((a) => a.id === presetAlbumId || a.dir === presetAlbumId) : null;
+  // 從聚會的「即將到來新相簿」進來的話，那本還不存在 → 幫忙預填新相簿的日期＋名稱
+  let presetNew = null;
+  if (presetAlbumId && !preset) {
+    const m = String(presetAlbumId).match(/^(\d{4})(\d{2})(\d{2})(.+)$/);
+    if (m) presetNew = { date: `${m[1]}-${m[2]}-${m[3]}`, title: m[4] };
+  }
 
   view().innerHTML = `
     <div class="wrap">
@@ -1855,8 +1897,8 @@ function renderUpload(presetAlbumId) {
           <div id="up-new">
             <p class="hint">新相簿要有日期和名稱，例如「2025-01-01」＋「新年聚餐」。</p>
             <div class="field">
-              <input class="input" id="up-date" type="date" style="max-width:12rem">
-              <input class="input" id="up-title" placeholder="相簿名稱，例如 新年聚餐" maxlength="30">
+              <input class="input" id="up-date" type="date" style="max-width:12rem" value="${presetNew ? presetNew.date : ''}">
+              <input class="input" id="up-title" placeholder="相簿名稱，例如 新年聚餐" maxlength="30" value="${presetNew ? esc(presetNew.title) : ''}">
             </div>
           </div>
         </div>
