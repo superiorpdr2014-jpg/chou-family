@@ -5619,7 +5619,9 @@
       "name": "周月嬌",
       "gender": "F",
       "note": "周振源與周粉的女兒",
-      "spouse": [],
+      "spouse": [
+        "p-1784685724723-1"
+      ],
       "parents": [
         "zhou-zhenyuan",
         "zhou-fen"
@@ -30231,6 +30233,49 @@
       "parents": [
         "zhou-yuemei",
         "zhou-yuemei-husband"
+      ],
+      "refs": []
+    },
+    {
+      "id": "p-1784685724723-1",
+      "name": "楊鉅志",
+      "note": "周月嬌的配偶",
+      "spouse": [
+        "zhou-yuejiao"
+      ],
+      "parents": [],
+      "refs": []
+    },
+    {
+      "id": "p-1784685724723-2",
+      "name": "楊志鈞",
+      "note": "周月嬌的小孩",
+      "spouse": [],
+      "parents": [
+        "zhou-yuejiao",
+        "p-1784685724723-1"
+      ],
+      "refs": []
+    },
+    {
+      "id": "p-1784685724723-3",
+      "name": "楊志祥",
+      "note": "周月嬌的小孩",
+      "spouse": [],
+      "parents": [
+        "zhou-yuejiao",
+        "p-1784685724723-1"
+      ],
+      "refs": []
+    },
+    {
+      "id": "p-1784685724723-4",
+      "name": "楊淑女",
+      "note": "周月嬌的小孩",
+      "spouse": [],
+      "parents": [
+        "zhou-yuejiao",
+        "p-1784685724723-1"
       ],
       "refs": []
     }
