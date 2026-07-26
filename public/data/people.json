@@ -26838,7 +26838,7 @@
     },
     {
       "id": "zhou-qinxi-husband",
-      "name": "蔡紅豆",
+      "name": "蔡竣丞",
       "gender": "M",
       "note": "本名待補",
       "spouse": [
@@ -27133,7 +27133,8 @@
           0.12059,
           0.12282
         ]
-      }
+      },
+      "born": 1996
     },
     {
       "id": "wang-meizhi",
